@@ -30,15 +30,34 @@ alkane_data <- data.frame(rtime = alkane_rt, rindex = alkane_ri)
 ## Experimental Retention Index (RI) calculation
 ################################# MS-DIAL ######################################
 ##Feature list deconvoluted with MS-DIAL
-msdial_rt <- read_excel("../X_hylaeae_metabolomics/Data/MSDIAL_feat_List_3-49min.xlsx", sheet = 2)
+msdial3to49min <- read_excel("../X_hylaeae_metabolomics/Data/MSDIAL_feat_list_3-49min.xlsx", sheet = 2)
+msdial3to49min <- data.frame(Alignment_ID = msdial3to49min$`Alignment ID`,
+                             RT = msdial3to49min$`Average Rt(min)`,
+                             MSDIAL_RI = msdial3to49min$`Average RI`,
+                             RI_tag = msdial3to49min$Comment)
+msdial49to54min <- read_excel("../X_hylaeae_metabolomics/Data/MSDIAL_feat_list_49-54min.xlsx", sheet = 2)
+msdial49to54min <- data.frame(Alignment_ID = msdial49to54min$`Alignment ID`,
+                             RT = msdial49to54min$`Average Rt(min)`,
+                             MSDIAL_RI = msdial49to54min$`Average RI`,
+                             RI_tag = msdial49to54min$Comment)
+msdial54to56min <- read_excel("../X_hylaeae_metabolomics/Data/MSDIAL_feat_list_54-56min.xlsx", sheet = 2)
+msdial54to56min <- data.frame(Alignment_ID = msdial54to56min$`Alignment ID`,
+                              RT = msdial54to56min$`Average Rt(min)`,
+                              MSDIAL_RI = msdial54to56min$`Average RI`,
+                              RI_tag = msdial54to56min$Comment)
+##Merge files
+msdial_rt <- bind_rows(
+  msdial3to49min %>% mutate(Segment = "3-49min"),
+  msdial49to54min %>% mutate(Segment = "49-54min"),
+  msdial54to56min %>% mutate(Segment = "54-56min"))
 ##RI calculation
-msdial_ri <- indexRtime(msdial_rt$`Average Rt(min)`, alkane_data)
+msdial_ri <- indexRtime(msdial_rt$RT, alkane_data)
 ##Adding the RI to the MS-DIAL feature list
-msdial_rt$RI_using_R <- msdial_ri
-## Moving the RI column close to the RT column
-msdial_rt <- msdial_rt[,c(1:2, 92, 3:91)]
+msdial_rt$R_RI <- msdial_ri
+## Moving columns
+msdial_rt <- msdial_rt[,c(5, 1:2, 6, 3:4)]
 ##Exporting the MS-DIAL feature list with RI
-write_xlsx(msdial_rt, "..//X_hylaeae_metabolomics/Result/MSDIAL_feat_List_3-49min_RI.xlsx")
+write_xlsx(msdial_rt, "../X_hylaeae_metabolomics/Result/MSDIAL_feat_list_with_RI.xlsx")
 
 
 
@@ -66,7 +85,7 @@ write_xlsx(msdial_rt, "..//X_hylaeae_metabolomics/Result/MSDIAL_feat_List_3-49mi
 
 
 
-  ################################# MZmine #######################################
+################################# MZmine #######################################
 ##Feature list deconvoluted with MZmine (3 to 43 min dataset)
 mzmine_rt <- read_excel("../B_grandiflora_metabolomics/Data/B_gradiflora_MZmine_Feat_list_3to43min.xlsx", sheet = 1)
 ##RI calculation (3 to 43 min dataset)
