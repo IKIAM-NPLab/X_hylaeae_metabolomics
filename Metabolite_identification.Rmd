@@ -27,6 +27,7 @@ library(tidyr)
 library(readxl)
 library(writexl)
 library(purrr)
+library(classyfireR)
 
 ```
 
@@ -34,9 +35,9 @@ Reading the files.
 
 ```{r }
 
-file_md3t49m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_3-49min.TXT"
-file_md49t54m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_49-54min.TXT"
-file_md54t56m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_54-56min.TXT"
+file_md3t49m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_GCMS_apolar_3-49min.TXT"
+file_md49t54m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_GCMS_apolar_49-54min.TXT"
+file_md54t56m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_GCMS_apolar_54-56min.TXT"
 md3t49m <- readLines(file_md3t49m, encoding = "latin1")
 md49t54m <- readLines(file_md49t54m, encoding = "latin1")
 md54t56m <- readLines(file_md54t56m, encoding = "latin1")
@@ -587,6 +588,84 @@ md_ions_fg <- md_ions %>%
 
 ```
 
+Flag features identified as siloxane compounds by compund formula.
+
+```{r }
+
+md_ions_si <- md_ions_fg %>%
+  mutate(Match_flag = case_when(
+    !is.na(Formula) & str_detect(Formula, "Si\\d*") ~
+      ifelse(is.na(Match_flag),
+             "Siloxane",
+             paste(Match_flag, "Siloxane", sep = "; ")),
+    TRUE ~ Match_flag))
+
+```
+
+Adding a classification of type of molecule using a Classyfire tool (https://github.com/aberHRML/classyfireR).
+
+```{r }
+
+# Filtrar features válidos
+md_ions_ik <- md_ions_si %>%
+  filter(Match_flag == "", !is.na(InChIKey)) %>%
+  distinct(InChIKey)
+# Compound classification using ClassyFire
+cf_results <- purrr::map(md_ions_ik$InChIKey, get_classification)
+
+
+
+
+`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0) a else b
+
+safe_get_cf <- purrr::possibly(get_classification, otherwise = NULL)
+
+cf_clean <- purrr::map_dfr(md_ions_ik$InChIKey, function(ik) {
+  
+  res <- safe_get_cf(ik)
+  
+  if (is.null(res)) {
+    return(tibble(
+      InChIKey = ik,
+      Superclass = NA,
+      Class = NA,
+      Subclass = NA
+    ))
+  }
+  
+  # Extraer tabla de clasificación
+  class_df <- res@classification$Classification
+  
+  tibble(
+    InChIKey = ik,
+    Superclass = class_df$Classification[class_df$Level == "superclass"][1] %||% NA,
+    Class      = class_df$Classification[class_df$Level == "class"][1] %||% NA,
+    Subclass   = class_df$Classification[class_df$Level == "subclass"][1] %||% NA
+  )
+})
+
+
+
+
+
+
+
+
+
+
+
+# Clean result
+cf_clean <- cf_results %>%
+  transmute(InChIKey = inchikey, Superclass = superclass$name,
+            Class = class$name, Subclass = subclass$name)
+
+
+
+# Unir con tabla original
+df_final <- df_valid %>%
+  left_join(cf_clean, by = "InChIKey")
+
+```
 
 
 
@@ -602,7 +681,11 @@ md_ions_fg <- md_ions %>%
 
 
 
--Codigo para detectar contaminantes siloxanos
+
+
+
+
+-Codigo para agregar superclase, clase y subclase
 -Codigo para agregar sinonimo corto
 
 
