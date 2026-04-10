@@ -121,7 +121,7 @@ Loading the feature table with experimental RI.
 ```{r }
 
 # Loading the feature list table with experimental RI
-file_mdri <- "../X_hylaeae_metabolomics/Result/MSDIAL_feat_list_with_RI.xlsx"
+file_mdri <- "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_list_with_RI.xlsx"
 md_ri <- read_excel(file_mdri, sheet = 1)
 # Extracting only the experimental IR
 md_ri <- data.frame(Feature_ID = md_ri$Feature_ID, Segment = md_ri$Segment,
@@ -191,7 +191,7 @@ md_xp1 <- md_xp1 %>%
 # Exporting the feature list if its have match (match factor > 700)
 md_xp1 %>%
   select(Feature_ID, Alignment_ID, RT, Match_flag) %>%
-  write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_feat_List_fg.xlsx")
+  write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_List_fg.xlsx")
 
 ```
 
@@ -430,6 +430,8 @@ nist_clean <- nist_db %>%
   distinct(DB_ID, Library, .keep_all = TRUE)
 # Saving the processed database
 saveRDS(nist_clean, "../X_hylaeae_metabolomics/Result/nist_db.rds")
+# Load the NIST database (metadata information of library)
+nist_clean <- readRDS("F:/NIST_20_Library/Result/nist_db.rds")
 
 ```
 
@@ -441,7 +443,7 @@ md_ik <- md_il123 %>%
   mutate(DB_ID = as.character(DB_ID)) %>%
   left_join(nist_clean %>%
               mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, InChIKey),
+              select(DB_ID, Library, InChIKey, Synon1, Synon2, Synon3),
             by = c("DB_ID", "Library"))
 
 ```
@@ -492,6 +494,8 @@ nist_mz <- nist_mz %>%
   distinct(DB_ID, Library, .keep_all = TRUE)
 # Saving the processed database
 saveRDS(nist_mz, "../X_hylaeae_metabolomics/Result/nist_mz.rds")
+# Load the NIST database (spectrum information of library)
+nist_mz <- readRDS("F:/NIST_20_Library/Result/nist_mz.rds")
 
 ```
 
@@ -521,7 +525,7 @@ parse_exp_ei <- function(spec_string) {
   list(Exp_mz = mz, Exp_int = intensity)
 }
 # Loading experimental spectrum
-file_mdei <- "../X_hylaeae_metabolomics/Result/MSDIAL_feat_list_with_RI_EI.xlsx"
+file_mdei <- "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_list_with_RI_EI.xlsx"
 md_ei <- read_excel(file_mdei, sheet = 1)
 # Extracting only the experimental EI spectrum
 md_ei <- data.frame(Feature_ID = md_ei$Feature_ID, Exp_EI = md_ei$Exp_EI)
@@ -602,29 +606,18 @@ md_ions_si <- md_ions_fg %>%
 
 ```
 
-Adding a classification of type of molecule using a Classyfire tool (https://github.com/aberHRML/classyfireR).
+Extracting InChIKey for classification of type of molecule using a Classyfire tool (https://github.com/aberHRML/classyfireR).
 
 ```{r }
 
-# Filtrar features válidos
+# Extractiong the InChIKey from the feature file
 md_ions_ik <- md_ions_si %>%
   filter(Match_flag == "", !is.na(InChIKey)) %>%
   distinct(InChIKey)
-# Compound classification using ClassyFire
-cf_results <- purrr::map(md_ions_ik$InChIKey, get_classification)
-
-
-
-
-`%||%` <- function(a, b) if (!is.null(a) && length(a) > 0) a else b
-
-safe_get_cf <- purrr::possibly(get_classification, otherwise = NULL)
-
-cf_clean <- purrr::map_dfr(md_ions_ik$InChIKey, function(ik) {
-  
-  res <- safe_get_cf(ik)
-  
-  if (is.null(res)) {
+# Metabolite classification
+met_class <- purrr::map_dfr(md_ions_ik$InChIKey, function(ik) {
+  res <- tryCatch(get_classification(ik), error = function(e) NULL)
+  if (is.null(res) || is.null(res@classification)) {
     return(tibble(
       InChIKey = ik,
       Superclass = NA,
@@ -632,38 +625,37 @@ cf_clean <- purrr::map_dfr(md_ions_ik$InChIKey, function(ik) {
       Subclass = NA
     ))
   }
-  
-  # Extraer tabla de clasificación
-  class_df <- res@classification$Classification
-  
+  class_vec <- res@classification$Classification
+  # Validar vector
+  if (!is.character(class_vec) || length(class_vec) < 3) {
+    return(tibble(
+      InChIKey = ik,
+      Superclass = NA,
+      Class = NA,
+      Subclass = NA
+    ))
+  }
   tibble(
     InChIKey = ik,
-    Superclass = class_df$Classification[class_df$Level == "superclass"][1] %||% NA,
-    Class      = class_df$Classification[class_df$Level == "class"][1] %||% NA,
-    Subclass   = class_df$Classification[class_df$Level == "subclass"][1] %||% NA
+    Superclass = ifelse(length(class_vec) >= 2, class_vec[2], NA),
+    Class      = ifelse(length(class_vec) >= 3, class_vec[3], NA),
+    Subclass   = ifelse(length(class_vec) >= 4, class_vec[4], NA)
   )
 })
 
+```
 
+Adding a classification of moleculecules to the feature table of identified features.
 
+```{r }
 
-
-
-
-
-
-
-
-# Clean result
-cf_clean <- cf_results %>%
-  transmute(InChIKey = inchikey, Superclass = superclass$name,
-            Class = class$name, Subclass = subclass$name)
-
-
-
-# Unir con tabla original
-df_final <- df_valid %>%
-  left_join(cf_clean, by = "InChIKey")
+# Unir con tabla original the molecules classification
+md_ions_cf <- md_ions_si %>%
+  left_join(met_class, by = "InChIKey")
+# Exporting the feature list with metabolites identified al IL 1, 2, and 3
+md_ions_cf %>%
+  select(Feature_ID, Segment, Alignment_ID, RT, Name,  Match_flag) %>%
+  write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_List_fg.xlsx")
 
 ```
 
@@ -678,15 +670,6 @@ df_final <- df_valid %>%
 
 
 
-
-
-
-
-
-
-
--Codigo para agregar superclase, clase y subclase
--Codigo para agregar sinonimo corto
 
 
 
