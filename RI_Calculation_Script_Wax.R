@@ -16,53 +16,46 @@ library("writexl")
 # Experimental RI for features that match with NIST libraries
 ## Loadding the retention time (RT) of each n-alkane
 alkane_rt_wx <- c(3.870, 5.412, 7.318, 9.469, 11.664, 13.870, 16.031, 18.122,
-                 20.139, 22.076, 23.937, 25.728, 27.624, 29.995, 33.071, 36.990,
-                 40.020, 42.278, 44.163, 45.958, 48.044, 50.540)
+                  20.139, 22.076, 23.937, 25.728, 27.624, 29.995, 33.071, 36.990,
+                  40.020, 42.278, 44.163, 45.958, 48.044, 50.540)
 ## Loadding the RI of each n-alkane
 alkane_ri_wx <- c(1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100,
-                 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000, 3100,
-                 3200, 3300)
+                  2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000, 3100,
+                  3200, 3300)
 ## n-alkanes DataFrame
-alkane_data <- data.frame(rtime = alkane_rt, rindex = alkane_ri)
+alkane_data_wx <- data.frame(rtime = alkane_rt_wx, rindex = alkane_ri_wx)
 
 
 ## Experimental Retention Index (RI) calculation
 ################################# MS-DIAL ######################################
 ##Feature list deconvoluted with MS-DIAL
-msdial3to49min <- read_excel("../X_hylaeae_metabolomics/Data/XXXXX.xlsx", sheet = 2)
-msdial3to49min <- data.frame(Alignment_ID = msdial3to49min$`Alignment ID`,
-                             RT = msdial3to49min$`Average Rt(min)`,
-                             MSDIAL_RI = msdial3to49min$`Average RI`,
-                             Exp_EI = msdial3to49min$`EI spectrum`,
-                             RI_tag = msdial3to49min$Comment)
-msdial49to54min <- read_excel("../X_hylaeae_metabolomics/Data/XXXX.xlsx", sheet = 2)
-msdial49to54min <- data.frame(Alignment_ID = msdial49to54min$`Alignment ID`,
-                             RT = msdial49to54min$`Average Rt(min)`,
-                             MSDIAL_RI = msdial49to54min$`Average RI`,
-                             Exp_EI = msdial49to54min$`EI spectrum`,
-                             RI_tag = msdial49to54min$Comment)
-msdial54to56min <- read_excel("../X_hylaeae_metabolomics/Data/XXXX.xlsx", sheet = 2)
-msdial54to56min <- data.frame(Alignment_ID = msdial54to56min$`Alignment ID`,
-                              RT = msdial54to56min$`Average Rt(min)`,
-                              MSDIAL_RI = msdial54to56min$`Average RI`,
-                              Exp_EI = msdial54to56min$`EI spectrum`,
-                              RI_tag = msdial54to56min$Comment)
+msdial3to38min_wx <- read_excel("../X_hylaeae_metabolomics/Data/MSDIAL_GCMS_polar_feat_list_3-38min.xlsx", sheet = 2)
+msdial3to38min_wx <- data.frame(Alignment_ID = msdial3to38min_wx$`Alignment ID`,
+                                RT = msdial3to38min_wx$`Average Rt(min)`,
+                                MSDIAL_RI = msdial3to38min_wx$`Average RI`,
+                                Exp_EI = msdial3to38min_wx$`EI spectrum`,
+                                RI_tag = msdial3to38min_wx$Comment)
+msdial38to50min_wx <- read_excel("../X_hylaeae_metabolomics/Data/MSDIAL_GCMS_polar_feat_list_38-50min.xlsx", sheet = 2)
+msdial38to50min_wx <- data.frame(Alignment_ID = msdial38to50min_wx$`Alignment ID`,
+                                 RT = msdial38to50min_wx$`Average Rt(min)`,
+                                 MSDIAL_RI = msdial38to50min_wx$`Average RI`,
+                                 Exp_EI = msdial38to50min_wx$`EI spectrum`,
+                                 RI_tag = msdial38to50min_wx$Comment)
 ##Merge files
-msdial_rt <- bind_rows(
-  msdial3to49min %>% mutate(Segment = "3-49min"),
-  msdial49to54min %>% mutate(Segment = "49-54min"),
-  msdial54to56min %>% mutate(Segment = "54-56min"))
+msdial_rtwx <- bind_rows(
+  msdial3to38min_wx %>% mutate(Segment = "3-38min"),
+  msdial38to50min_wx %>% mutate(Segment = "38-50min"))
 # Adding a global ID
-msdial_rt <- msdial_rt %>%
+msdial_rtwx <- msdial_rtwx %>%
   mutate(Feature_ID = row_number())
 ##RI calculation
-msdial_ri <- indexRtime(msdial_rt$RT, alkane_data)
+msdial_riwx <- indexRtime(msdial_rtwx$RT, alkane_data_wx)
 ##Adding the RI to the MS-DIAL feature list
-msdial_rt$R_RI <- msdial_ri
+msdial_rtwx$R_RI <- msdial_riwx
 ## Moving columns
-msdial_rt <- msdial_rt[,c(7, 6, 1:2, 8, 3:5)]
+msdial_rtwx <- msdial_rtwx[,c(7, 6, 1:2, 8, 3:5)]
 ##Exporting the MS-DIAL feature list with RI
-write_xlsx(msdial_rt, "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_list_with_RI_EI.xlsx")
+write_xlsx(msdial_rtwx, "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_polar_feat_list_with_RI.xlsx")
 
 
 

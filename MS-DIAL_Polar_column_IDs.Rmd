@@ -1,5 +1,5 @@
 ---
-title: "Metabolite identified using NIST MS Search"
+title: "Metabolite identified using NIST MS Search (NIST 20: *mainlib* and *replib* libraries) with data deconvoluted using MS-DIAL - SH-Rtx-Wax Polar colum"
 author: "Jefferson Pastuna"
 date: "`r Sys.Date()`"
 output: html_document
@@ -35,12 +35,11 @@ Reading the files.
 
 ```{r }
 
-file_md3t49m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_GCMS_apolar_3-49min.TXT"
-file_md49t54m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_GCMS_apolar_49-54min.TXT"
-file_md54t56m <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_GCMS_apolar_54-56min.TXT"
-md3t49m <- readLines(file_md3t49m, encoding = "latin1")
-md49t54m <- readLines(file_md49t54m, encoding = "latin1")
-md54t56m <- readLines(file_md54t56m, encoding = "latin1")
+# Loading identification files exported from NIST MS Search
+file_md3t38m_wx <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_GCMS_polar_3-38min.TXT"
+file_md38t50m_wx <- "../X_hylaeae_metabolomics/Data/NIST_MS_Search/MSDIAL_GCMS_polar_38-50min.TXT"
+md3t38m_wx <- readLines(file_md3t38m_wx, encoding = "latin1")
+md38t50m_wx <- readLines(file_md38t50m_wx, encoding = "latin1")
 
 ```
 
@@ -54,8 +53,8 @@ parse_nist_msdial <- function(lines) {
   current_unknown <- NA
   current_rt <- NA
   for (line in lines) {
-    # Detectar feature
-    if (grepl("^Unknown:", line)) {
+    # Feature detection
+    if (str_detect(line, "^Unknown:")) {
       current_unknown <- str_extract(line, "UnknownID=\\d+") %>%
         str_extract("\\d+") %>%
         as.integer()
@@ -63,24 +62,24 @@ parse_nist_msdial <- function(lines) {
         str_extract("\\d+\\.?\\d*") %>%
         as.numeric()
     }
-    # Detectar hits
-    if (grepl("^Hit", line)) {
-      # Extract values from ";"
-      parts <- unlist(str_split(line, ";"))
-      parts <- trimws(parts)
-      # Cleaning the values
+    # Hits detection
+    if (str_detect(line, "^Hit")) {
+      # Character detection << >> and extract by block
+      blocks <- str_extract_all(line, "<<.*?>>")[[1]]
+      blocks <- str_remove_all(blocks, "<<|>>")
+      name    <- ifelse(length(blocks) >= 1, blocks[1], NA)
+      formula <- ifelse(length(blocks) >= 2, blocks[2], NA)
+      library <- ifelse(length(blocks) >= 3, blocks[3], NA)
+      # Value extraction
       hit_num <- str_extract(line, "Hit\\s+\\d+") %>% str_extract("\\d+")
-      name <- str_extract(parts[1], "<<.*?>>") %>% str_remove_all("<<|>>")
-      formula <- str_extract(parts[2], "<<.*?>>") %>% str_remove_all("<<|>>")
-      MF <- str_extract(parts[3], "\\d+")
-      RMF <- str_extract(parts[4], "\\d+")
-      Prob <- str_extract(parts[5], "-?\\d+\\.?\\d*")
-      CAS <- str_extract(parts[6], "[0-9\\-]+")
-      MW <- str_extract(parts[7], "\\d+")
-      Lib <- str_extract(parts[8], "<<.*?>>") %>% str_remove_all("<<|>>")
-      ID <- str_extract(parts[9], "\\d+")
-      RI <- str_extract(parts[10], "\\d+")
-      # Creating DataFrame
+      MF  <- str_extract(line, "MF:\\s*\\d+") %>% str_extract("\\d+")
+      RMF <- str_extract(line, "RMF:\\s*\\d+") %>% str_extract("\\d+")
+      Prob <- str_extract(line, "Prob:\\s*-?\\d+\\.?\\d*") %>% str_extract("-?\\d+\\.?\\d*")
+      CAS <- str_extract(line, "CAS:\\s*[0-9\\-]+") %>% str_extract("[0-9\\-]+")
+      MW  <- str_extract(line, "Mw:\\s*\\d+") %>% str_extract("\\d+")
+      ID  <- str_extract(line, "Id:\\s*\\d+") %>% str_extract("\\d+")
+      RI  <- str_extract(line, "RI:\\s*\\d+") %>% str_extract("\\d+")
+      # Adding values by row
       row <- data.frame(
         Alignment_ID = current_unknown,
         RT = current_rt,
@@ -92,7 +91,7 @@ parse_nist_msdial <- function(lines) {
         Probability = as.numeric(Prob),
         CAS = CAS,
         MW = as.numeric(MW),
-        Library = Lib,
+        Library = library,
         DB_ID = as.integer(ID),
         Lit_RI = as.numeric(RI),
         stringsAsFactors = FALSE
@@ -103,16 +102,14 @@ parse_nist_msdial <- function(lines) {
   bind_rows(data_list)
 }
 # Apply for each segment
-md3t49m_df  <- parse_nist_msdial(md3t49m)
-md49t54m_df <- parse_nist_msdial(md49t54m)
-md54t56m_df <- parse_nist_msdial(md54t56m)
+md3t38m_wx_df  <- parse_nist_msdial(md3t38m_wx)
+md38t50m_wx_df <- parse_nist_msdial(md38t50m_wx)
 # Merge all
-md_ids <- bind_rows(
-  md3t49m_df %>% mutate(Segment = "3-49min"),
-  md49t54m_df %>% mutate(Segment = "49-54min"),
-  md54t56m_df %>% mutate(Segment = "54-56min"))
+md_wx_ids <- bind_rows(
+  md3t38m_wx_df %>% mutate(Segment = "3-38min"),
+  md38t50m_wx_df %>% mutate(Segment = "38-50min"))
 # Moving columns
-md_ids <- md_ids[,c(14, 1:13)]
+md_wx_ids <- md_wx_ids[,c(14, 1:13)]
 
 ```
 
@@ -121,12 +118,12 @@ Loading the feature table with experimental RI.
 ```{r }
 
 # Loading the feature list table with experimental RI
-file_mdri <- "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_list_with_RI.xlsx"
-md_ri <- read_excel(file_mdri, sheet = 1)
+file_mdriwx <- "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_polar_feat_list_with_RI.xlsx"
+md_wx_ri <- read_excel(file_mdriwx, sheet = 1)
 # Extracting only the experimental IR
-md_ri <- data.frame(Feature_ID = md_ri$Feature_ID, Segment = md_ri$Segment,
-                    Alignment_ID = md_ri$Alignment_ID, Exp_RI = md_ri$R_RI,
-                    RI_tag = md_ri$RI_tag)
+md_wx_ri <- data.frame(Feature_ID = md_wx_ri$Feature_ID, Segment = md_wx_ri$Segment,
+                       Alignment_ID = md_wx_ri$Alignment_ID, Exp_RI = md_wx_ri$R_RI,
+                       RI_tag = md_wx_ri$RI_tag)
 
 ```
 
@@ -135,11 +132,27 @@ Adding the experimental RI to the DataFrame with identified metabolites.
 ```{r }
 
 # Ensure the value format
-md_ids$Alignment_ID <- as.character(md_ids$Alignment_ID)
-md_ri$Alignment_ID <- as.character(md_ri$Alignment_ID)
+md_wx_ids$Alignment_ID <- as.character(md_wx_ids$Alignment_ID)
+md_wx_ri$Alignment_ID <- as.character(md_wx_ri$Alignment_ID)
 # Adding experimental RI to DataFrame with identified metabolites
-md_eri <- md_ids %>%
-  left_join(md_ri, by = c("Segment", "Alignment_ID"))
+md_wx_eri <- md_wx_ids %>%
+  left_join(md_wx_ri, by = c("Segment", "Alignment_ID"))
+
+```
+
+Adding the NIST metadata (InChIKey, Synonyms, and Polar RI) of identified metabolites.
+
+```{r }
+
+# Load the NIST database (metadata information of library)
+nist_db <- readRDS("F:/NIST_20_Library/Result/nist_db.rds")
+# Adding aditional information to the identified metabolites
+md_lri <- md_wx_eri %>%
+  mutate(DB_ID = as.character(DB_ID)) %>%
+  left_join(nist_db %>%
+              mutate(DB_ID = as.character(DB_ID)) %>%
+              select(DB_ID, Library, RI_StdPolar, InChIKey, Synon1, Synon2, Synon3),
+            by = c("DB_ID", "Library"))
 
 ```
 
@@ -148,11 +161,11 @@ Ading a column with a diference between literature RI and experimental RI.
 ```{r }
 
 # Adding RI error
-md_error <- md_eri %>%
+md_wx_error <- md_lri %>%
   mutate(RI_Error = ifelse(
-    Lit_RI == 0 | is.na(Lit_RI) | is.na(Exp_RI), NA, round(abs(Lit_RI - Exp_RI))))
+    RI_StdPolar == 0 | is.na(RI_StdPolar) | is.na(Exp_RI), NA, round(abs(RI_StdPolar - Exp_RI))))
 # Moving columns
-md_error <- md_error[,c(15, 1:14, 16, 18, 17)]
+md_wx_error <- md_wx_error[,c(15, 1:14, 16, 18, 23, 19:22, 17)]
 
 ```
 
@@ -160,7 +173,7 @@ Adding a column that fag features with low match match (< 700).
 
 ```{r }
 
-md_flag <- md_error %>%
+md_wx_flag <- md_wx_error %>%
   group_by(Feature_ID) %>%
   mutate(Match_flag = ifelse(MatchFactor < 700,
                              "Low score (<700)", "")) %>%
@@ -168,40 +181,11 @@ md_flag <- md_error %>%
 
 ```
 
-Exporting the feature list with fag if its have match o no (Match factor below of 700).
-
-```{r }
-
-md_xp1 <- md_flag %>%
-  group_by(Feature_ID) %>%
-  # Evaluation condition by feature
-  mutate(all_low = all(Match_flag == "Low score (<700)", na.rm = TRUE) &
-           !any(is.na(Match_flag) | Match_flag == "")) %>%
-  # Reduce a one row per feature
-  slice(1) %>%
-  # Apply condition over Match_factor
-  mutate(MatchFactor = ifelse(all_low, MatchFactor, NA),
-         Match_flag = ifelse(all_low, "Low score (<700)", NA)) %>%
-  ungroup() %>%
-  select(-all_low)
-# Orderening by the Feature_ID
-md_xp1 <- md_xp1 %>%
-  mutate(Feature_ID = as.numeric(Feature_ID)) %>%  # Change to numeric
-  arrange(Feature_ID)
-# Exporting the feature list if its have match (match factor > 700)
-md_xp1 %>%
-  select(Feature_ID, Alignment_ID, RT, Match_flag) %>%
-  write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_List_fg.xlsx")
-
-```
-
-**NOTE.** This step was used to quality control, the result of this was verify by manual identification.
-
 Deleiting hits with low match.
 
 ```{r }
 
-md_clean <- md_flag %>%
+md_wx_clean <- md_wx_flag %>%
   group_by(Feature_ID) %>%
   group_modify(~{
     if (all(.x$Match_flag == "Low score (<700)")) {
@@ -215,11 +199,11 @@ md_clean <- md_flag %>%
   }) %>%
   ungroup()
 # Orderening by the Alignment_ID
-md_clean <- md_clean %>%
+md_wx_clean <- md_wx_clean %>%
   mutate(Feature_ID = as.numeric(Feature_ID)) %>%  # Change to numeric
   arrange(Feature_ID)
-# Deleiting ionization tag in in-house library "[M]+.  70eV"
-md_clean <- md_clean %>%
+# Deleting ionization tag in the name of in-house library "[M]+.  70eV"
+md_wx_clean <- md_wx_clean %>%
   mutate(
     Name = str_replace(Name, "\\s*\\[M\\]\\+\\.\\s*70\\s*eV", ""))
 
@@ -231,39 +215,39 @@ Now we focus in level 3 identification level. Here we separate in two filter, on
 
 ```{r }
 
-md_il <- md_clean %>%
+md_wx_il <- md_wx_clean %>%
   group_by(Feature_ID) %>%
   mutate(
-    # Clasificación por rangos
+    # Classification by rage
     in_0_10   = !is.na(RI_Error) & RI_Error <= 10,
     in_10_100 = !is.na(RI_Error) & RI_Error > 10 & RI_Error <= 100,
     has_0_10   = any(in_0_10),
     has_10_100 = any(in_10_100),
     is_ikiam = Library == "ikiam_npl_gcms_lib") %>%
-  # Asignar prioridad por fila
+  # Adding priority by row
   mutate(priority = case_when(
       has_0_10   & in_0_10   ~ 1,
       !has_0_10 & has_10_100 & in_10_100 ~ 2,
       !has_0_10 & !has_10_100 ~ 3,
       TRUE ~ NA_real_)) %>%
-  # Mantener solo filas relevantes por feature
+  # Keep only key row by each row
   filter(!is.na(priority)) %>%
-  # Orden según prioridad
+  # ordering according the priority
   arrange(priority,
-    # PRIORIDAD 1 → Match alto primero o in-house library si aplica
+    # Priority 1: High match first or in house library of apply
     desc(ifelse(priority == 1, is_ikiam, FALSE)),
     desc(ifelse(priority == 1, MatchFactor, NA)),
     ifelse(priority == 1, RI_Error, NA),
-    # PRIORIDAD 2 → RI bajo primero
+    # Priority 2: Low RI first
     ifelse(priority == 2, RI_Error, NA),
     desc(ifelse(priority == 2, MatchFactor, NA)),
-    # PRIORIDAD 3 → Match alto
+    # Priority 3: High match first
     desc(ifelse(priority == 3, MatchFactor, NA))) %>%
   slice(1) %>%
   ungroup() %>%
   select(-in_0_10, -in_10_100, -has_0_10, -has_10_100, -priority, -is_ikiam)
 # Orderening by the Feature_ID
-md_il <- md_il %>%
+md_wx_il <- md_wx_il %>%
   mutate(Feature_ID = as.numeric(Feature_ID)) %>%  # Change to numeric
   arrange(Feature_ID)
 
@@ -273,45 +257,45 @@ En some case same name of metabolite has been asigned for multiple feature. In t
 
 ```{r }
 
-# Separar identificados
-md_ids <- md_il %>%
+# Extracting features with IDs
+md_wx_ids <- md_wx_il %>%
   filter(!is.na(Name))
-# Separar no identificados
-md_noids <- md_il %>%
+# Extracting features without IDs
+md_wx_noids <- md_wx_il %>%
   filter(is.na(Name))
-# Aplicar lógica solo a identificados
-md_rep <- md_ids %>%   # Tabla con 1 hit por feature
+# Applying firter only for features with IDs
+md_wx_rep <- md_wx_ids %>%   # Table with 1 hit per feature
   group_by(Name) %>%
   mutate(in_0_10   = !is.na(RI_Error) & RI_Error <= 10,
          in_10_100 = !is.na(RI_Error) & RI_Error > 10 & RI_Error <= 100,
          has_0_10   = any(in_0_10),
          has_10_100 = any(in_10_100),
          is_ikiam = Library == "ikiam_npl_gcms_lib") %>%
-  # Definir grupo activo
+  # Select active group
   mutate(active_group = case_when(
     has_0_10 ~ "0_10",
     !has_0_10 & has_10_100 ~ "10_100",
     TRUE ~ "gt100")) %>%
-  # Definir quién participa en el ranking
+  # Define who participates in the ranking
   mutate(candidate = case_when(active_group == "0_10"   ~ in_0_10,
                                active_group == "10_100" ~ in_10_100,
                                TRUE ~ TRUE)) %>%
-  # Orden SOLO para candidatos
+  # Order ONLY for candidates
   arrange(Name,
-    desc(candidate),  # candidatos primero
-    # PRIORIDAD 1
+    desc(candidate),  # candidates first
+    # PRIORITY 1
     desc(ifelse(candidate & active_group == "0_10", is_ikiam, FALSE)),
     desc(ifelse(candidate & active_group == "0_10", MatchFactor, NA)),
     ifelse(candidate & active_group == "0_10", RI_Error, Inf),
-    # PRIORIDAD 2
+    # PRIORITY 2
     ifelse(candidate & active_group == "10_100", RI_Error, Inf),
     desc(ifelse(candidate & active_group == "10_100", MatchFactor, NA)),
-    # PRIORIDAD 3
+    # PRIORITY 3
     desc(ifelse(candidate & active_group == "gt100", MatchFactor, NA))) %>%
   group_by(Name) %>%
   mutate(rank_name = ifelse(candidate, row_number(), NA_integer_)) %>%
   ungroup() %>%
-  # Etiquetado
+  # Labeled
   mutate(Match_flag = case_when(
     rank_name == 1 ~ Match_flag,
     active_group == "0_10" ~ "Repeated (RI error <10)",
@@ -319,10 +303,10 @@ md_rep <- md_ids %>%   # Tabla con 1 hit por feature
     TRUE ~ "Repeated (RI error >100/NA)")) %>%
   select(-in_0_10, -in_10_100, -has_0_10, -has_10_100,
          -is_ikiam, -active_group, -candidate, -rank_name)
-# Volver a unir todo
-md_rep <- bind_rows(md_rep, md_noids)
+# Merge all
+md_wx_rep <- bind_rows(md_wx_rep, md_wx_noids)
 # Orderening by the Feature_ID
-md_rep <- md_rep %>%
+md_wx_rep <- md_wx_rep %>%
   mutate(Feature_ID = as.numeric(Feature_ID)) %>%  # Change to numeric
   arrange(Feature_ID)
 
@@ -332,7 +316,7 @@ Adding a identification level, metabolites identified with in house library (mat
 
 ```{r }
 
-md_il123 <- md_rep %>%
+md_wx_il123 <- md_wx_rep %>%
   mutate(IL = case_when(
       # No etiquetar
       is.na(Name) ~ NA_character_,
@@ -347,163 +331,13 @@ md_il123 <- md_rep %>%
 
 ```
 
-Now we will use the NIST data base (mainlib and replib) to found a InChIKey, and short name to add to the identified table.
-
-```{r }
-
-# Función para parsear un archivo NIST *.txt
-parse_nist_txt <- function(file_path) {
-  lines <- readLines(file_path, warn = FALSE)
-  # Separar por compuestos
-  blocks <- split(lines, cumsum(grepl("^Name:", lines)))
-  parse_block <- function(block) {
-    block_txt <- paste(block, collapse = "\n")
-    # Campos principales
-    name <- str_match(block_txt, "Name:\\s*(.*)")[,2]
-    inchikey <- str_match(block_txt, "InChIKey:\\s*(.*)")[,2]
-    # Synon (hasta 3)
-    synon_all <- str_match_all(block_txt, "Synon:\\s*(.*)")[[1]][,2]
-    synon1 <- if(length(synon_all) >= 1) synon_all[1] else NA
-    synon2 <- if(length(synon_all) >= 2) synon_all[2] else NA
-    synon3 <- if(length(synon_all) >= 3) synon_all[3] else NA
-    # CAS y Related CAS
-    cas <- str_match(block_txt, "CAS#:\\s*([^;\\n]+)")[,2]
-    related_cas <- str_match(block_txt, "Related_CAS#:\\s*([^;\\n]+)")[,2]
-    # NIST ID
-    nist_id <- str_match(block_txt, "NIST#:\\s*(\\d+)")[,2]
-    # DB#
-    db_id <- str_match(block_txt, "DB#:\\s*(\\d+)")[,2]
-    # Retention Index
-    ri_line <- str_match(block_txt, "Retention_index:\\s*(.*)")[,2]
-    ri_semi <- NA
-    ri_stdnp <- NA
-    ri_polar <- NA
-    if(!is.na(ri_line)) {
-      parts <- str_split(ri_line, "\\s+")[[1]]
-      for(p in parts) {
-        # SemiStdNP
-        if(str_detect(p, "SemiStdNP=")) {
-          val <- str_match(p, "SemiStdNP=(\\d+)")[,2]
-          if(is.na(val)) val <- str_match(p, "SemiStdNP=(\\d+)/")[,2]
-          ri_semi <- as.numeric(val)}
-        # StdNP
-        if(str_detect(p, "StdNP=")) {
-          val <- str_match(p, "StdNP=(\\d+)")[,2]
-          if(is.na(val)) val <- str_match(p, "StdNP=(\\d+)/")[,2]
-          ri_stdnp <- as.numeric(val)}
-        # StdPolar
-        if(str_detect(p, "StdPolar=")) {
-          val <- str_match(p, "StdPolar=(\\d+)")[,2]
-          if(is.na(val)) val <- str_match(p, "StdPolar=(\\d+)/")[,2]
-          ri_polar <- as.numeric(val)
-        }
-      }
-    }
-    tibble(
-      Name = name,
-      Synon1 = synon1,
-      Synon2 = synon2,
-      Synon3 = synon3,
-      InChIKey = inchikey,
-      CAS = cas,
-      Related_CAS = related_cas,
-      NIST_ID = nist_id,
-      DB_ID = db_id,
-      RI_SemiStdNP = ri_semi,
-      RI_StdNP = ri_stdnp,
-      RI_StdPolar = ri_polar
-    )
-  }
-  map_dfr(blocks, parse_block)
-}
-# Cargar bibliotecas
-mainlib <- parse_nist_txt("F:/NIST_20_Library/Data/mainlib.txt")
-replib  <- parse_nist_txt("F:/NIST_20_Library/Data/replib.txt")
-ikiamlib  <- parse_nist_txt("F:/NIST_20_Library/Data/ikiamlib.txt")
-# Unir
-nist_db <- bind_rows(
-  mainlib %>% mutate(Library = "mainlib"),
-  replib  %>% mutate(Library = "replib"),
-  ikiamlib %>% mutate(Library = "ikiam_npl_gcms_lib"))
-# Ensuring a unic compound in the data base
-nist_clean <- nist_db %>%
-  distinct(DB_ID, Library, .keep_all = TRUE)
-# Saving the processed database
-saveRDS(nist_clean, "../X_hylaeae_metabolomics/Result/nist_db.rds")
-# Load the NIST database (metadata information of library)
-nist_clean <- readRDS("F:/NIST_20_Library/Result/nist_db.rds")
-
-```
-
-Using a NIST 20 library the InChIKey was added to the identified table, the data base ID and library of identified metabolites was used to found the correct InChIKey.
-
-```{r }
-
-md_ik <- md_il123 %>%
-  mutate(DB_ID = as.character(DB_ID)) %>%
-  left_join(nist_clean %>%
-              mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, InChIKey, Synon1, Synon2, Synon3),
-            by = c("DB_ID", "Library"))
-
-```
-
-Extraction NIST 20 library mass spectrum.
-
-```{r }
-
-parse_nist_mz <- function(file_path) {
-  lines <- readLines(file_path, warn = FALSE)
-  blocks <- split(lines, cumsum(grepl("^Name:", lines)))
-  blocks <- blocks[lengths(blocks) > 1]
-  parse_block <- function(block) {
-    txt <- paste(block, collapse = "\n")
-    # DB_ID
-    db_id <- str_match(txt, "DB#:\\s*(\\d+)")[,2]
-    # Num Peaks
-    num_peaks <- str_match(txt, "Num Peaks:\\s*(\\d+)")[,2]
-    # Extraer espectro
-    peaks_lines <- block[grepl("^\\d+\\s", block)]
-    if(length(peaks_lines) == 0) return(NULL)
-    peaks_txt <- paste(peaks_lines, collapse = " ")
-    # separar pares mz intensidad
-    pairs <- unlist(str_split(peaks_txt, ";"))
-    pairs <- trimws(pairs)
-    pairs <- pairs[pairs != ""]
-    mz <- as.numeric(str_extract(pairs, "^\\d+"))
-    intensity <- as.numeric(str_extract(pairs, "\\d+$"))
-    tibble(
-      DB_ID = as.character(db_id),
-      nist_mz = list(mz),
-      nist_intensity = list(intensity)
-    )
-  }
-  map_dfr(blocks, parse_block)
-}
-# Cargar bibliotecas
-mainlib_mz <- parse_nist_mz("F:/NIST_20_Library/Data/mainlib.txt")
-replib_mz  <- parse_nist_mz("F:/NIST_20_Library/Data/replib.txt")
-ikiamlib_mz  <- parse_nist_mz("F:/NIST_20_Library/Data/ikiamlib.txt")
-# Unir
-nist_mz <- bind_rows(
-  mainlib_mz %>% mutate(Library = "mainlib"),
-  replib_mz  %>% mutate(Library = "replib"),
-  ikiamlib_mz %>% mutate(Library = "ikiam_npl_gcms_lib"))
-# Ensuring a unic compound in the data base
-nist_mz <- nist_mz %>%
-  distinct(DB_ID, Library, .keep_all = TRUE)
-# Saving the processed database
-saveRDS(nist_mz, "../X_hylaeae_metabolomics/Result/nist_mz.rds")
-# Load the NIST database (spectrum information of library)
-nist_mz <- readRDS("F:/NIST_20_Library/Result/nist_mz.rds")
-
-```
-
 Adding espectrum data from the NIST libry to the identified metabolites.
 
 ```{r }
-
-md_libmz <- md_ik %>%
+# Load the NIST database (spectrum information of library)
+nist_mz <- readRDS("F:/NIST_20_Library/Result/nist_mz.rds")
+# Adding espectrum data from the NIST libry to the identified metabolites
+md_wx_libmz <- md_wx_il123 %>%
   mutate(DB_ID = as.character(DB_ID)) %>%
   left_join(nist_mz %>%
               mutate(DB_ID = as.character(DB_ID)) %>%
@@ -525,16 +359,16 @@ parse_exp_ei <- function(spec_string) {
   list(Exp_mz = mz, Exp_int = intensity)
 }
 # Loading experimental spectrum
-file_mdei <- "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_list_with_RI_EI.xlsx"
-md_ei <- read_excel(file_mdei, sheet = 1)
+file_mdeiwx <- "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_polar_feat_list_with_RI_EI.xlsx"
+md_eiwx <- read_excel(file_mdeiwx, sheet = 1)
 # Extracting only the experimental EI spectrum
-md_ei <- data.frame(Feature_ID = md_ei$Feature_ID, Exp_EI = md_ei$Exp_EI)
+md_eiwx <- data.frame(Feature_ID = md_eiwx$Feature_ID, Exp_EI = md_eiwx$Exp_EI)
 # Addin experimental spectum to edentified metabolites
-md_expmz <- md_libmz %>%
-  left_join(md_ei %>%
+md_wx_expmz <- md_wx_libmz %>%
+  left_join(md_eiwx %>%
               select(Feature_ID, Exp_EI), by = "Feature_ID")
 # Change the spectrum to list
-md_expmz_ls <- md_expmz %>%
+md_wx_expmz_ls <- md_wx_expmz %>%
   rowwise() %>%
   mutate(spec = list(parse_exp_ei(Exp_EI)),
          exp_mz = list(spec$Exp_mz),
@@ -542,7 +376,7 @@ md_expmz_ls <- md_expmz %>%
   ungroup() %>%
   select(-spec)
 # Adding intesity filter (nois) and pass to nominal mass
-md_expmz_ns <- md_expmz_ls %>%
+md_wx_expmz_ns <- md_wx_expmz_ls %>%
   rowwise() %>%
   mutate(int_exp_norm = list(exp_int / max(exp_int, na.rm = TRUE) * 100),
          keep_idx = list(which(int_exp_norm >= 2)),
@@ -557,19 +391,19 @@ The folowing code count the number of ions are equal between library and experim
 ```{r }
 
 # Compare to only identified features
-md_expmz_id <- md_expmz_ns %>%
+md_wx_expmz_id <- md_wx_expmz_ns %>%
   filter(!is.na(Name)) %>%
   rowwise() %>%
   mutate(matched_ions = length(intersect(exp_mz_ns, nist_mz))) %>%
   ungroup()
 # Extracting no identified features
-md_expmz_noid <- md_expmz_ns %>%
+md_wx_expmz_noid <- md_wx_expmz_ns %>%
   filter(is.na(Name)) %>%
   mutate(matched_ions = NA_integer_)
 # Join identified and no identified features with number of ion match
-md_ions <- bind_rows(md_expmz_id, md_expmz_noid)
+md_wx_ions <- bind_rows(md_wx_expmz_id, md_wx_expmz_noid)
 # Orderening by the Feature_ID
-md_ions <- md_ions %>%
+md_wx_ions <- md_wx_ions %>%
   mutate(Feature_ID = as.numeric(Feature_ID)) %>%  # Change to numeric
   arrange(Feature_ID)
 
@@ -579,15 +413,15 @@ Adding a flag if the number of ions match is below of 5.
 
 ```{r }
 
-md_ions_fg <- md_ions %>%
+md_wx_ions_fg <- md_wx_ions %>%
   mutate(Match_flag = case_when(
-    # No identificado (no editar)
+    # Unidentified (do not edit)
     is.na(Name) ~ Match_flag,
-    # Match de iones bajo
+    # Low ion match
     !is.na(matched_ions) & matched_ions < 5 ~ 
       ifelse(is.na(Match_flag), "Low ion match (<5)",
              paste(Match_flag, "Low ion match (<5)", sep = "; ")),
-    # Mantener lo demás
+    # Keep the rest
     TRUE ~ Match_flag))
 
 ```
@@ -596,7 +430,7 @@ Flag features identified as siloxane compounds by compund formula.
 
 ```{r }
 
-md_ions_si <- md_ions_fg %>%
+md_wx_ions_si <- md_wx_ions_fg %>%
   mutate(Match_flag = case_when(
     !is.na(Formula) & str_detect(Formula, "Si\\d*") ~
       ifelse(is.na(Match_flag),
@@ -611,11 +445,11 @@ Extracting InChIKey for classification of type of molecule using a Classyfire to
 ```{r }
 
 # Extractiong the InChIKey from the feature file
-md_ions_ik <- md_ions_si %>%
+md_wx_ions_ik <- md_wx_ions_si %>%
   filter(Match_flag == "", !is.na(InChIKey)) %>%
   distinct(InChIKey)
 # Metabolite classification
-met_class <- purrr::map_dfr(md_ions_ik$InChIKey, function(ik) {
+md_wx_met_class <- purrr::map_dfr(md_wx_ions_ik$InChIKey, function(ik) {
   res <- tryCatch(get_classification(ik), error = function(e) NULL)
   if (is.null(res) || is.null(res@classification)) {
     return(tibble(
@@ -627,7 +461,7 @@ met_class <- purrr::map_dfr(md_ions_ik$InChIKey, function(ik) {
   }
   class_vec <- res@classification$Classification
   # Validar vector
-  if (!is.character(class_vec) || length(class_vec) < 3) {
+  if (!is.character(class_vec)) {
     return(tibble(
       InChIKey = ik,
       Superclass = NA,
@@ -649,38 +483,15 @@ Adding a classification of moleculecules to the feature table of identified feat
 
 ```{r }
 
-# Unir con tabla original the molecules classification
-md_ions_cf <- md_ions_si %>%
-  left_join(met_class, by = "InChIKey")
-# Exporting the feature list with metabolites identified al IL 1, 2, and 3
-md_ions_cf %>%
-  select(Feature_ID, Segment, Alignment_ID, RT, Name,  Match_flag) %>%
-  write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_List_fg.xlsx")
+# Join with original table the molecules classification
+md_wx_ions_cf <- md_wx_ions_si %>%
+  left_join(md_wx_met_class, by = "InChIKey")
+# Exporting the feature list with metabolites identified at IL 1, 2, and 3
+md_wx_ions_cf %>%
+  select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
+         Formula, MatchFactor, matched_ions, RI_StdPolar, Exp_RI, RI_Error, Library,
+         DB_ID, InChIKey, Superclass, Class, Subclass,Match_flag, RI_tag) %>%
+  write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_polar_IDs.xlsx")
 
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
