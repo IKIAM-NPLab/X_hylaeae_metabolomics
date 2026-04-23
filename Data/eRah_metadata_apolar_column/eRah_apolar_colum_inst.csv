@@ -1,0 +1,58 @@
+sampleID;filename;date;time
+5_Ext_blank;Data/eRah_apolar_colum/Process_Blank/5_Ext_blank.CDF;2026-03-25;16:42:19.810553
+10_QC;Data/eRah_apolar_colum/Quality_Control/10_QC.CDF;2026-03-25;16:41:42.844591
+21_QC;Data/eRah_apolar_colum/Quality_Control/21_QC.CDF;2026-03-25;16:40:22.485008
+32_QC;Data/eRah_apolar_colum/Quality_Control/32_QC.CDF;2026-03-25;16:39:02.936863
+44_QC;Data/eRah_apolar_colum/Quality_Control/44_QC.CDF;2026-03-25;16:37:36.513021
+55_QC;Data/eRah_apolar_colum/Quality_Control/55_QC.CDF;2026-03-25;16:36:17.50185
+65_QC;Data/eRah_apolar_colum/Quality_Control/65_QC.CDF;2026-03-25;16:35:05.187366
+66_QC;Data/eRah_apolar_colum/Quality_Control/66_QC.CDF;2026-03-25;16:34:57.890097
+9_QC;Data/eRah_apolar_colum/Quality_Control/9_QC.CDF;2026-03-25;16:41:50.204563
+11_Callo_52_9mg_3;Data/eRah_apolar_colum/Samples/11_Callo_52_9mg_3.CDF;2026-03-25;16:41:35.48237
+12_Brote_14_5mg_1;Data/eRah_apolar_colum/Samples/12_Brote_14_5mg_1.CDF;2026-03-25;16:41:28.124731
+13_Brote_50 _ 1mg_3;Data/eRah_apolar_colum/Samples/13_Brote_50 _ 1mg_3.CDF;2026-03-25;16:41:20.765509
+14_Brote_44_2 mg_2;Data/eRah_apolar_colum/Samples/14_Brote_44_2 mg_2.CDF;2026-03-25;16:41:13.343069
+15_Brote_76_08mg_1;Data/eRah_apolar_colum/Samples/15_Brote_76_08mg_1.CDF;2026-03-25;16:41:05.888086
+16_Brote_25_ 3 mg_1;Data/eRah_apolar_colum/Samples/16_Brote_25_ 3 mg_1.CDF;2026-03-25;16:40:58.702267
+17_Brote_33_5 mg_3;Data/eRah_apolar_colum/Samples/17_Brote_33_5 mg_3.CDF;2026-03-25;16:40:51.422729
+18_Brote_6_6mg_2;Data/eRah_apolar_colum/Samples/18_Brote_6_6mg_2.CDF;2026-03-25;16:40:44.2994
+19_Brote_22_3mg_2;Data/eRah_apolar_colum/Samples/19_Brote_22_3mg_2.CDF;2026-03-25;16:40:37.080025
+20_Brote_6_6mg_1;Data/eRah_apolar_colum/Samples/20_Brote_6_6mg_1.CDF;2026-03-25;16:40:29.831715
+22_Brote_76_08mg_2;Data/eRah_apolar_colum/Samples/22_Brote_76_08mg_2.CDF;2026-03-25;16:40:15.233322
+23_Brote_50 _ 1mg_2;Data/eRah_apolar_colum/Samples/23_Brote_50 _ 1mg_2.CDF;2026-03-25;16:40:08.047508
+24_Brote_33_4mg_1;Data/eRah_apolar_colum/Samples/24_Brote_33_4mg_1.CDF;2026-03-25;16:40:00.814833
+25_Brote_44_2 mg_3;Data/eRah_apolar_colum/Samples/25_Brote_44_2 mg_3.CDF;2026-03-25;16:39:53.609766
+26_Brote_6_8mg_1;Data/eRah_apolar_colum/Samples/26_Brote_6_8mg_1.CDF;2026-03-25;16:39:46.327921
+27_Brote_12_5mg_2;Data/eRah_apolar_colum/Samples/27_Brote_12_5mg_2.CDF;2026-03-25;16:39:39.063997
+28_Brote_24_ 8mg_3;Data/eRah_apolar_colum/Samples/28_Brote_24_ 8mg_3.CDF;2026-03-25;16:39:31.907162
+29_Brote_25_ 3 mg_3;Data/eRah_apolar_colum/Samples/29_Brote_25_ 3 mg_3.CDF;2026-03-25;16:39:24.71903
+30_Brote_33_4mg_2;Data/eRah_apolar_colum/Samples/30_Brote_33_4mg_2.CDF;2026-03-25;16:39:17.51759
+31_Brote_22_3mg_3;Data/eRah_apolar_colum/Samples/31_Brote_22_3mg_3.CDF;2026-03-25;16:39:10.328041
+34_Brote_14_5mg_2;Data/eRah_apolar_colum/Samples/34_Brote_14_5mg_2.CDF;2026-03-25;16:38:48.518379
+35_Brote_76_08mg_3;Data/eRah_apolar_colum/Samples/35_Brote_76_08mg_3.CDF;2026-03-25;16:38:41.345804
+36_Callo_40_2mg_1;Data/eRah_apolar_colum/Samples/36_Callo_40_2mg_1.CDF;2026-03-25;16:38:34.25136
+37_Brote_27_8 mg_1;Data/eRah_apolar_colum/Samples/37_Brote_27_8 mg_1.CDF;2026-03-25;16:38:27.081163
+38_Callo_40_2mg_3;Data/eRah_apolar_colum/Samples/38_Callo_40_2mg_3.CDF;2026-03-25;16:38:19.922817
+39_Callo_52_9mg_1;Data/eRah_apolar_colum/Samples/39_Callo_52_9mg_1.CDF;2026-03-25;16:38:12.765911
+40_Brote_6_6mg_2;Data/eRah_apolar_colum/Samples/40_Brote_6_6mg_2.CDF;2026-03-25;16:38:05.484129
+41_Brote_12_5mg_3;Data/eRah_apolar_colum/Samples/41_Brote_12_5mg_3.CDF;2026-03-25;16:37:58.298319
+42_Callo_56_2mg_2;Data/eRah_apolar_colum/Samples/42_Callo_56_2mg_2.CDF;2026-03-25;16:37:51.076675
+43_Brote_33_5 mg_2;Data/eRah_apolar_colum/Samples/43_Brote_33_5 mg_2.CDF;2026-03-25;16:37:43.77924
+45_Callo_52_9mg_2;Data/eRah_apolar_colum/Samples/45_Callo_52_9mg_2.CDF;2026-03-25;16:37:29.358458
+46_Brote_33_4mg_3;Data/eRah_apolar_colum/Samples/46_Brote_33_4mg_3.CDF;2026-03-25;16:37:22.123449
+47_Brote_12_5mg_1;Data/eRah_apolar_colum/Samples/47_Brote_12_5mg_1.CDF;2026-03-25;16:37:14.982038
+48_Brote_6_8mg_3;Data/eRah_apolar_colum/Samples/48_Brote_6_8mg_3.CDF;2026-03-25;16:37:07.843102
+49_Brote_27_8 mg_2;Data/eRah_apolar_colum/Samples/49_Brote_27_8 mg_2.CDF;2026-03-25;16:37:00.594795
+50_Brote_24_ 8mg_1;Data/eRah_apolar_colum/Samples/50_Brote_24_ 8mg_1.CDF;2026-03-25;16:36:53.440224
+51_Brote_33_5 mg_1;Data/eRah_apolar_colum/Samples/51_Brote_33_5 mg_1.CDF;2026-03-25;16:36:46.298923
+52_Brote_14_5mg_3;Data/eRah_apolar_colum/Samples/52_Brote_14_5mg_3.CDF;2026-03-25;16:36:39.157625
+53_Brote_24_ 8mg_2;Data/eRah_apolar_colum/Samples/53_Brote_24_ 8mg_2.CDF;2026-03-25;16:36:31.891361
+54_Brote_44_2 mg_1;Data/eRah_apolar_colum/Samples/54_Brote_44_2 mg_1.CDF;2026-03-25;16:36:24.703281
+57_Brote_27_8 mg_3;Data/eRah_apolar_colum/Samples/57_Brote_27_8 mg_3.CDF;2026-03-25;16:36:02.93577
+58_Brote_22_3mg_1;Data/eRah_apolar_colum/Samples/58_Brote_22_3mg_1.CDF;2026-03-25;16:35:55.687481
+59_Callo_40_2mg_2;Data/eRah_apolar_colum/Samples/59_Callo_40_2mg_2.CDF;2026-03-25;16:35:48.517281
+60_Brote_50 _ 1mg_1;Data/eRah_apolar_colum/Samples/60_Brote_50 _ 1mg_1.CDF;2026-03-25;16:35:41.204214
+61_Callo_56_2mg_3;Data/eRah_apolar_colum/Samples/61_Callo_56_2mg_3.CDF;2026-03-25;16:35:34.047293
+62_Callo_56_2mg_1;Data/eRah_apolar_colum/Samples/62_Callo_56_2mg_1.CDF;2026-03-25;16:35:26.830238
+63_Brote_6_8mg_2;Data/eRah_apolar_colum/Samples/63_Brote_6_8mg_2.CDF;2026-03-25;16:35:19.532335
+64_Brote_25_ 3 mg_2;Data/eRah_apolar_colum/Samples/64_Brote_25_ 3 mg_2.CDF;2026-03-25;16:35:12.359848

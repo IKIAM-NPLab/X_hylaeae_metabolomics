@@ -2,12 +2,16 @@
 title: "Metabolite identified using NIST MS Search (NIST 20 mainlib and replib libraries) with data deconvoluted using MS-DIAL - Rtx-5 Semi-standard non-polar colum"
 author: "Jefferson Pastuna"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  github_document:
+    toc: true
+    toc_depth: 3
 ---
 
 ```{r setup, include=FALSE}
 
 knitr::opts_chunk$set(echo = TRUE)
+usethis::git_vaccinate()
 
 ```
 
@@ -48,14 +52,14 @@ Formating the result conteined in the NIST MS Search file.
 
 ```{r }
 
-# Función para parsear resultados NIST
+# Fumction to extract NIST result
 parse_nist_msdial <- function(lines) {
   data_list <- list()
   current_unknown <- NA
   current_rt <- NA
   for (line in lines) {
-    # Detectar feature
-    if (grepl("^Unknown:", line)) {
+    # Feature detection
+    if (str_detect(line, "^Unknown:")) {
       current_unknown <- str_extract(line, "UnknownID=\\d+") %>%
         str_extract("\\d+") %>%
         as.integer()
@@ -63,24 +67,24 @@ parse_nist_msdial <- function(lines) {
         str_extract("\\d+\\.?\\d*") %>%
         as.numeric()
     }
-    # Detectar hits
-    if (grepl("^Hit", line)) {
-      # Extract values from ";"
-      parts <- unlist(str_split(line, ";"))
-      parts <- trimws(parts)
-      # Cleaning the values
+    # Hits detection
+    if (str_detect(line, "^Hit")) {
+      # Character detection << >> and extract by block
+      blocks <- str_extract_all(line, "<<.*?>>")[[1]]
+      blocks <- str_remove_all(blocks, "<<|>>")
+      name    <- ifelse(length(blocks) >= 1, blocks[1], NA)
+      formula <- ifelse(length(blocks) >= 2, blocks[2], NA)
+      library <- ifelse(length(blocks) >= 3, blocks[3], NA)
+      # Value extraction
       hit_num <- str_extract(line, "Hit\\s+\\d+") %>% str_extract("\\d+")
-      name <- str_extract(parts[1], "<<.*?>>") %>% str_remove_all("<<|>>")
-      formula <- str_extract(parts[2], "<<.*?>>") %>% str_remove_all("<<|>>")
-      MF <- str_extract(parts[3], "\\d+")
-      RMF <- str_extract(parts[4], "\\d+")
-      Prob <- str_extract(parts[5], "-?\\d+\\.?\\d*")
-      CAS <- str_extract(parts[6], "[0-9\\-]+")
-      MW <- str_extract(parts[7], "\\d+")
-      Lib <- str_extract(parts[8], "<<.*?>>") %>% str_remove_all("<<|>>")
-      ID <- str_extract(parts[9], "\\d+")
-      RI <- str_extract(parts[10], "\\d+")
-      # Creating DataFrame
+      MF  <- str_extract(line, "MF:\\s*\\d+") %>% str_extract("\\d+")
+      RMF <- str_extract(line, "RMF:\\s*\\d+") %>% str_extract("\\d+")
+      Prob <- str_extract(line, "Prob:\\s*-?\\d+\\.?\\d*") %>% str_extract("-?\\d+\\.?\\d*")
+      CAS <- str_extract(line, "CAS:\\s*[0-9\\-]+") %>% str_extract("[0-9\\-]+")
+      MW  <- str_extract(line, "Mw:\\s*\\d+") %>% str_extract("\\d+")
+      ID  <- str_extract(line, "Id:\\s*\\d+") %>% str_extract("\\d+")
+      RI  <- str_extract(line, "RI:\\s*\\d+") %>% str_extract("\\d+")
+      # Adding values by row
       row <- data.frame(
         Alignment_ID = current_unknown,
         RT = current_rt,
@@ -92,7 +96,7 @@ parse_nist_msdial <- function(lines) {
         Probability = as.numeric(Prob),
         CAS = CAS,
         MW = as.numeric(MW),
-        Library = Lib,
+        Library = library,
         DB_ID = as.integer(ID),
         Lit_RI = as.numeric(RI),
         stringsAsFactors = FALSE
@@ -585,7 +589,10 @@ Extracting InChIKey for classification of type of molecule using a Classyfire to
 
 # Extractiong the InChIKey from the feature file
 md_ions_ik <- md_ions_si %>%
-  filter(Match_flag == "", !is.na(InChIKey)) %>%
+  group_by(InChIKey) %>%
+  filter(any(is.na(Match_flag) | Match_flag == "")) %>%
+  ungroup() %>%
+  filter(!is.na(InChIKey)) %>%
   distinct(InChIKey)
 # Metabolite classification
 met_class <- purrr::map_dfr(md_ions_ik$InChIKey, function(ik) {
@@ -600,7 +607,7 @@ met_class <- purrr::map_dfr(md_ions_ik$InChIKey, function(ik) {
   }
   class_vec <- res@classification$Classification
   # Validar vector
-  if (!is.character(class_vec) || length(class_vec) < 3) {
+  if (!is.character(class_vec) || length(class_vec) < 2) {
     return(tibble(
       InChIKey = ik,
       Superclass = NA,

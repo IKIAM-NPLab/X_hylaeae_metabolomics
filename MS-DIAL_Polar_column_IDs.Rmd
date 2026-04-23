@@ -2,12 +2,16 @@
 title: "Metabolite identified using NIST MS Search (NIST 20: *mainlib* and *replib* libraries) with data deconvoluted using MS-DIAL - SH-Rtx-Wax Polar colum"
 author: "Jefferson Pastuna"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  github_document:
+    toc: true
+    toc_depth: 3
 ---
 
 ```{r setup, include=FALSE}
 
 knitr::opts_chunk$set(echo = TRUE)
+usethis::git_vaccinate()
 
 ```
 
@@ -47,7 +51,7 @@ Formating the result conteined in the NIST MS Search file.
 
 ```{r }
 
-# Función para parsear resultados NIST
+# Fumction to extract NIST result
 parse_nist_msdial <- function(lines) {
   data_list <- list()
   current_unknown <- NA
@@ -147,7 +151,7 @@ Adding the NIST metadata (InChIKey, Synonyms, and Polar RI) of identified metabo
 # Load the NIST database (metadata information of library)
 nist_db <- readRDS("F:/NIST_20_Library/Result/nist_db.rds")
 # Adding aditional information to the identified metabolites
-md_lri <- md_wx_eri %>%
+md_wx_lri <- md_wx_eri %>%
   mutate(DB_ID = as.character(DB_ID)) %>%
   left_join(nist_db %>%
               mutate(DB_ID = as.character(DB_ID)) %>%
@@ -161,7 +165,7 @@ Ading a column with a diference between literature RI and experimental RI.
 ```{r }
 
 # Adding RI error
-md_wx_error <- md_lri %>%
+md_wx_error <- md_wx_lri %>%
   mutate(RI_Error = ifelse(
     RI_StdPolar == 0 | is.na(RI_StdPolar) | is.na(Exp_RI), NA, round(abs(RI_StdPolar - Exp_RI))))
 # Moving columns
@@ -445,8 +449,11 @@ Extracting InChIKey for classification of type of molecule using a Classyfire to
 ```{r }
 
 # Extractiong the InChIKey from the feature file
-md_wx_ions_ik <- md_wx_ions_si %>%
-  filter(Match_flag == "", !is.na(InChIKey)) %>%
+md_ions_ik <- md_ions_si %>%
+  group_by(InChIKey) %>%
+  filter(any(is.na(Match_flag) | Match_flag == "")) %>%
+  ungroup() %>%
+  filter(!is.na(InChIKey)) %>%
   distinct(InChIKey)
 # Metabolite classification
 md_wx_met_class <- purrr::map_dfr(md_wx_ions_ik$InChIKey, function(ik) {
@@ -461,7 +468,7 @@ md_wx_met_class <- purrr::map_dfr(md_wx_ions_ik$InChIKey, function(ik) {
   }
   class_vec <- res@classification$Classification
   # Validar vector
-  if (!is.character(class_vec)) {
+  if (!is.character(class_vec) || length(class_vec) < 2) {
     return(tibble(
       InChIKey = ik,
       Superclass = NA,
@@ -494,4 +501,9 @@ md_wx_ions_cf %>%
   write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_polar_IDs.xlsx")
 
 ```
+
+
+C:\Users\Waters>F:\NIST20\MSSEARCH\NISTMS$.EXE /instrument /PAR=2
+
+
 

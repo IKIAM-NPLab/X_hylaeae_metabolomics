@@ -1,0 +1,208 @@
+---
+title: "GC-MS metabolomics of X. hylaeae - Spectral deconvolution"
+author: "Jefferson Pastuna"
+date: "2026-04-15"
+output:
+  github_document:
+    toc: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+usethis::git_vaccinate()
+
+```
+
+### Introduction
+
+Write an Introduction.
+
+### Before to start
+
+Write a package description.
+
+### eRah package workflow
+
+How to star.
+
+```{r echo=TRUE, warning=FALSE}
+
+# eRah package installation
+#install.packages('erah')
+# eRah library call
+library(erah)
+
+```
+
+Folder files
+
+```{r echo=TRUE}
+
+# Delete all file that are not in folders
+unlink('Data/eRah_apolar_colum/*')
+# Data folder path
+createdt('Data/eRah_apolar_colum/')
+
+```
+
+New experiment.
+
+
+```{r echo=TRUE}
+
+# Loading (*.CDF) chromatograms
+instrumental <- read.csv('Data/eRah_metadata_apolar_column/eRah_apolar_colum_inst.csv', sep = ";")
+# Loading metadata of the chromatograms (phenotype file)
+phenotype <- read.csv('Data/eRah_metadata_apolar_column/eRah_apolar_colum_pheno.csv', sep = ";")
+# Merge of metadata information with chromatograms
+ex <- newExp(instrumental = instrumental,
+             phenotype = phenotype,
+             info = 'X. hylaeae metabolomics')
+
+```
+
+Compound deconvolution
+
+Parameter
+
+```{r echo=TRUE}
+
+# Deconvolution parameters for chromatogram analysis between 3.2 and 49.6 min
+dec.par.3to49 <- setDecPar(min.peak.width = 3,
+                           min.peak.height = 450,
+                           noise.threshold = 45,
+                           avoid.processing.mz = c(30:32),
+                           analysis.time = c(3.2, 49.6))
+# Deconvolution parameters for chromatogram analysis between 49.6 and 54.0 min
+dec.par.49to54 <- setDecPar(min.peak.width = 3,
+                           min.peak.height = 600,
+                           noise.threshold = 60,
+                           avoid.processing.mz = c(30:32),
+                           analysis.time = c(49.6, 54.0))
+# Deconvolution parameters for chromatogram analysis between 54.0 and 56.5 min
+dec.par.54to56 <- setDecPar(min.peak.width = 3,
+                           min.peak.height = 1000,
+                           noise.threshold = 100,
+                           avoid.processing.mz = c(30:32),
+                           analysis.time = c(54.0, 56.5))
+
+```
+
+parallel processing
+
+```{r echo=TRUE}
+
+plan(future::multisession, workers = 5)
+
+```
+
+Deconvolution
+
+```{r echo=TRUE, warning=FALSE}
+
+# Chromatogram deconvolution between 3.2 and 49.6 min
+ex.3to49 <- deconvolveComp(ex, dec.par.3to49)
+# Chromatogram deconvolution between 49.6 and 54.0 min
+ex.49to54 <- deconvolveComp(ex, dec.par.49to54)
+# Chromatogram deconvolution between 54.0 and 56.5 min
+ex.54to56 <- deconvolveComp(ex, dec.par.54to56)
+
+```
+
+Alignment
+
+```{r echo=TRUE}
+
+# Alignment parameters
+ex.al.par <- setAlPar(min.spectra.cor = 0.85,
+                      max.time.dist = 3,
+                      mz.range = 50:500)
+# Alignment of 3.2-49.6 min dataset
+ex.3to49 <- alignComp(ex.3to49, alParameters = ex.al.par)
+# Alignment of 49.6-54.0 min dataset
+ex.49to54 <- alignComp(ex.49to54, alParameters = ex.al.par)
+# Alignment of 54.0-56.5 min dataset
+ex.54to56 <- alignComp(ex.54to56, alParameters = ex.al.par)
+
+```
+
+Missing compound recovery
+
+```{r echo=TRUE}
+
+# Missing compound recovery for 3.2-49.6 min dataset
+ex.3to49 <- recMissComp(ex.3to49, min.samples = 2)
+# Missing compound recovery for 49.6-54.0 min dataset
+ex.49to54 <- recMissComp(ex.49to54, min.samples = 2)
+# Missing compound recovery for 54.0-56.5 min dataset
+ex.54to56 <- recMissComp(ex.54to56, min.samples = 2)
+
+```
+
+Exporting alignment feature list.
+
+```{r echo=TRUE}
+
+# Extracting alignment feature list 3.2-49.6 min
+feat_list.3to49 <- ex.3to49@Results@Alignment
+# Exporting alignment feature list
+write.csv(feat_list.3to49,
+          file = "Result/eRah_3to49min_GCMS_apolar/eRah_feat_list_3to49min.csv")
+# Extracting alignment feature list 49.6-54.0 min
+feat_list.49to54 <- ex.49to54@Results@Alignment
+# Exporting alignment feature list
+write.csv(feat_list.49to54,
+          file = "Result/eRah_49to54min_GCMS_apolar/eRah_feat_list_49to54min.csv")
+# Extracting alignment feature list 54.0-56.5 min
+feat_list.54to56 <- ex.54to56@Results@Alignment
+# Exporting alignment feature list
+write.csv(feat_list.54to56,
+          file = "Result/eRah_54to56min_GCMS_apolar/eRah_feat_list_54to56min.csv")
+
+```
+
+# Identification
+
+Metabolite identification was by comparing all the spectra found against a reference database. The eRah default database was used to metabolite identification. Metabolite identification was improve by exporting all the spectra found (.msp) in eRah to NIST MS Search 2.4 software.
+
+```{r echo=TRUE, warning=FALSE}
+
+# Identification of 3.2-49.6 min dataset
+peak_iden.3to49 <- identifyComp(ex.3to49,
+                                id.database = mslib,
+                                mz.range = NULL,
+                                n.putative = 1)
+# Identification of 49.6-54.0 min dataset
+peak_iden.49to54 <- identifyComp(ex.49to54,
+                                 id.database = mslib,
+                                 mz.range = NULL,
+                                 n.putative = 1)
+# Identification of 54.0-56.5 min dataset
+peak_iden.54to56 <- identifyComp(ex.54to56,
+                                 id.database = mslib,
+                                 mz.range = NULL,
+                                 n.putative = 1)
+
+```
+
+Exporting spectra to NIST MS Search software identification with NIST-20 library.
+
+```{r echo=TRUE}
+
+# 3.2-49.6 min dataset
+export2MSP(peak_iden.3to49,
+           store.path = "Result/eRah_3to49min_GCMS_apolar",
+           alg.version = 2)
+# 49.6-54.0 min dataset
+export2MSP(peak_iden.49to54,
+           store.path = "Result/eRah_49to54min_GCMS_apolar",
+           alg.version = 2)
+# 54.0-56.5 min dataset
+export2MSP(peak_iden.54to56,
+           store.path = "Result/eRah_54to56min_GCMS_apolar",
+           alg.version = 2)
+
+```
+

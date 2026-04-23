@@ -1,0 +1,58 @@
+sampleID;filename;date;time
+5_Wax_Ext_blank;Data/eRah_polar_colum/Process_Blank/5_Wax_Ext_blank.CDF;2026-03-26;13:50:48.680672
+10_Wax_QC;Data/eRah_polar_colum/Quality_Control/10_Wax_QC.CDF;2026-03-26;13:50:17.369326
+21_Wax_QC;Data/eRah_polar_colum/Quality_Control/21_Wax_QC.CDF;2026-03-26;13:49:06.267265
+32_Wax_QC;Data/eRah_polar_colum/Quality_Control/32_Wax_QC.CDF;2026-03-26;13:47:58.998011
+44_Wax_QC;Data/eRah_polar_colum/Quality_Control/44_Wax_QC.CDF;2026-03-26;13:46:44.92355
+55_Wax_QC;Data/eRah_polar_colum/Quality_Control/55_Wax_QC.CDF;2026-03-26;13:45:37.421858
+65_Wax_QC;Data/eRah_polar_colum/Quality_Control/65_Wax_QC.CDF;2026-03-26;13:44:35.845222
+66_Wax_QC;Data/eRah_polar_colum/Quality_Control/66_Wax_QC.CDF;2026-03-26;13:44:29.656837
+9_Wax_QC;Data/eRah_polar_colum/Quality_Control/9_Wax_QC.CDF;2026-03-26;13:50:23.666222
+11_Wax_Callo_52_9mg_3;Data/eRah_polar_colum/Samples/11_Wax_Callo_52_9mg_3.CDF;2026-03-26;13:50:10.994408
+12_Wax_Brote_14_5mg_1;Data/eRah_polar_colum/Samples/12_Wax_Brote_14_5mg_1.CDF;2026-03-26;13:50:04.743523
+13_Wax_Brote_50 _ 1mg_3;Data/eRah_polar_colum/Samples/13_Wax_Brote_50 _ 1mg_3.CDF;2026-03-26;13:49:58.477247
+14_Wax_Brote_44_2 mg_2;Data/eRah_polar_colum/Samples/14_Wax_Brote_44_2 mg_2.CDF;2026-03-26;13:49:51.760077
+15_Wax_Brote_76_08mg_1;Data/eRah_polar_colum/Samples/15_Wax_Brote_76_08mg_1.CDF;2026-03-26;13:49:44.884398
+16_Wax_Brote_25_ 3 mg_1;Data/eRah_polar_colum/Samples/16_Wax_Brote_25_ 3 mg_1.CDF;2026-03-26;13:49:38.068905
+17_Wax_Brote_33_5 mg_3;Data/eRah_polar_colum/Samples/17_Wax_Brote_33_5 mg_3.CDF;2026-03-26;13:49:31.193243
+18_Wax_Brote_6_6mg_2;Data/eRah_polar_colum/Samples/18_Wax_Brote_6_6mg_2.CDF;2026-03-26;13:49:24.442514
+19_Wax_Brote_22_3mg_2;Data/eRah_polar_colum/Samples/19_Wax_Brote_22_3mg_2.CDF;2026-03-26;13:49:18.391676
+20_Wax_Brote_6_6mg_1;Data/eRah_polar_colum/Samples/20_Wax_Brote_6_6mg_1.CDF;2026-03-26;13:49:12.28373
+22_Wax_Brote_76_08mg_2;Data/eRah_polar_colum/Samples/22_Wax_Brote_76_08mg_2.CDF;2026-03-26;13:49:00.249607
+23_Wax_Brote_50 _ 1mg_2;Data/eRah_polar_colum/Samples/23_Wax_Brote_50 _ 1mg_2.CDF;2026-03-26;13:48:54.186319
+24_Wax_Brote_33_4mg_1;Data/eRah_polar_colum/Samples/24_Wax_Brote_33_4mg_1.CDF;2026-03-26;13:48:48.062744
+25_Wax_Brote_44_2 mg_3;Data/eRah_polar_colum/Samples/25_Wax_Brote_44_2 mg_3.CDF;2026-03-26;13:48:41.923565
+26_Wax_Brote_6_8mg_1;Data/eRah_polar_colum/Samples/26_Wax_Brote_6_8mg_1.CDF;2026-03-26;13:48:35.907143
+27_Wax_Brote_12_5mg_2;Data/eRah_polar_colum/Samples/27_Wax_Brote_12_5mg_2.CDF;2026-03-26;13:48:29.861687
+28_Wax_Brote_24_ 8mg_3;Data/eRah_polar_colum/Samples/28_Wax_Brote_24_ 8mg_3.CDF;2026-03-26;13:48:23.671022
+29_Wax_Brote_25_ 3 mg_3;Data/eRah_polar_colum/Samples/29_Wax_Brote_25_ 3 mg_3.CDF;2026-03-26;13:48:17.498306
+30_Wax_Brote_33_4mg_2;Data/eRah_polar_colum/Samples/30_Wax_Brote_33_4mg_2.CDF;2026-03-26;13:48:11.388039
+31_Wax_Brote_22_3mg_3;Data/eRah_polar_colum/Samples/31_Wax_Brote_22_3mg_3.CDF;2026-03-26;13:48:05.027838
+34_Wax_Brote_14_5mg_2;Data/eRah_polar_colum/Samples/34_Wax_Brote_14_5mg_2.CDF;2026-03-26;13:47:46.217588
+35_Wax_Brote_76_08mg_3;Data/eRah_polar_colum/Samples/35_Wax_Brote_76_08mg_3.CDF;2026-03-26;13:47:40.000299
+36_Wax_Callo_40_2mg_1;Data/eRah_polar_colum/Samples/36_Wax_Callo_40_2mg_1.CDF;2026-03-26;13:47:33.954847
+37_Wax_Brote_27_8 mg_1;Data/eRah_polar_colum/Samples/37_Wax_Brote_27_8 mg_1.CDF;2026-03-26;13:47:27.86022
+38_Wax_Callo_40_2mg_3;Data/eRah_polar_colum/Samples/38_Wax_Callo_40_2mg_3.CDF;2026-03-26;13:47:21.65855
+39_Wax_Callo_52_9mg_1;Data/eRah_polar_colum/Samples/39_Wax_Callo_52_9mg_1.CDF;2026-03-26;13:47:15.485853
+40_Wax_Brote_6_6mg_2;Data/eRah_polar_colum/Samples/40_Wax_Brote_6_6mg_2.CDF;2026-03-26;13:47:09.360048
+41_Wax_Brote_12_5mg_3;Data/eRah_polar_colum/Samples/41_Wax_Brote_12_5mg_3.CDF;2026-03-26;13:47:03.234028
+42_Wax_Callo_56_2mg_2;Data/eRah_polar_colum/Samples/42_Wax_Callo_56_2mg_2.CDF;2026-03-26;13:46:57.047981
+43_Wax_Brote_33_5 mg_2;Data/eRah_polar_colum/Samples/43_Wax_Brote_33_5 mg_2.CDF;2026-03-26;13:46:50.986916
+45_Wax_Callo_52_9mg_2;Data/eRah_polar_colum/Samples/45_Wax_Callo_52_9mg_2.CDF;2026-03-26;13:46:38.766462
+46_Wax_Brote_33_4mg_3;Data/eRah_polar_colum/Samples/46_Wax_Brote_33_4mg_3.CDF;2026-03-26;13:46:32.674135
+47_Wax_Brote_12_5mg_1;Data/eRah_polar_colum/Samples/47_Wax_Brote_12_5mg_1.CDF;2026-03-26;13:46:26.595139
+48_Wax_Brote_6_8mg_3;Data/eRah_polar_colum/Samples/48_Wax_Brote_6_8mg_3.CDF;2026-03-26;13:46:20.438057
+49_Wax_Brote_27_8 mg_2;Data/eRah_polar_colum/Samples/49_Wax_Brote_27_8 mg_2.CDF;2026-03-26;13:46:14.391079
+50_Wax_Brote_24_ 8mg_1;Data/eRah_polar_colum/Samples/50_Wax_Brote_24_ 8mg_1.CDF;2026-03-26;13:46:08.314381
+51_Wax_Brote_33_5 mg_1;Data/eRah_polar_colum/Samples/51_Wax_Brote_33_5 mg_1.CDF;2026-03-26;13:46:02.219761
+52_Wax_Brote_14_5mg_3;Data/eRah_polar_colum/Samples/52_Wax_Brote_14_5mg_3.CDF;2026-03-26;13:45:56.189922
+53_Wax_Brote_24_ 8mg_2;Data/eRah_polar_colum/Samples/53_Wax_Brote_24_ 8mg_2.CDF;2026-03-26;13:45:49.626587
+54_Wax_Brote_44_2 mg_1;Data/eRah_polar_colum/Samples/54_Wax_Brote_44_2 mg_1.CDF;2026-03-26;13:45:43.547575
+57_Wax_Brote_27_8 mg_3;Data/eRah_polar_colum/Samples/57_Wax_Brote_27_8 mg_3.CDF;2026-03-26;13:45:24.906837
+58_Wax_Brote_22_3mg_1;Data/eRah_polar_colum/Samples/58_Wax_Brote_22_3mg_1.CDF;2026-03-26;13:45:18.783276
+59_Wax_Callo_40_2mg_2;Data/eRah_polar_colum/Samples/59_Wax_Callo_40_2mg_2.CDF;2026-03-26;13:45:12.626123
+60_Wax_Brote_50 _ 1mg_1;Data/eRah_polar_colum/Samples/60_Wax_Brote_50 _ 1mg_1.CDF;2026-03-26;13:45:06.54715
+61_Wax_Callo_56_2mg_3;Data/eRah_polar_colum/Samples/61_Wax_Callo_56_2mg_3.CDF;2026-03-26;13:45:00.358791
+62_Wax_Callo_56_2mg_1;Data/eRah_polar_colum/Samples/62_Wax_Callo_56_2mg_1.CDF;2026-03-26;13:44:54.203981
+63_Wax_Brote_6_8mg_2;Data/eRah_polar_colum/Samples/63_Wax_Brote_6_8mg_2.CDF;2026-03-26;13:44:48.078159
+64_Wax_Brote_25_ 3 mg_2;Data/eRah_polar_colum/Samples/64_Wax_Brote_25_ 3 mg_2.CDF;2026-03-26;13:44:41.923359

@@ -1,0 +1,182 @@
+---
+title: "GC-MS metabolomics of *in vitro* *X. hylaeae* metabolomics- Spectral deconvolution"
+author: "Jefferson Pastuna"
+date: "2026-04-15"
+output:
+  github_document:
+    toc: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+usethis::git_vaccinate()
+
+```
+
+### Introduction
+
+Write an Introduction.
+
+### Before to start
+
+Write a package description.
+
+### eRah package workflow
+
+How to star.
+
+```{r echo=TRUE, warning=FALSE}
+
+# eRah package installation
+#install.packages('erah')
+# eRah library call
+library(erah)
+
+```
+
+Folder files
+
+```{r echo=TRUE}
+
+# Delete all file that are not in folders
+unlink('Data/eRah_polar_colum/*')
+# Data folder path
+createdt('Data/eRah_polar_colum/')
+
+```
+
+New experiment.
+
+
+```{r echo=TRUE}
+
+# Loading (*.CDF) chromatograms
+instrumental <- read.csv('Data/eRah_metadata_polar_column/eRah_polar_colum_inst.csv', sep = ";")
+# Loading metadata of the chromatograms (phenotype file)
+phenotype <- read.csv('Data/eRah_metadata_polar_column/eRah_polar_colum_pheno.csv', sep = ";")
+# Merge of metadata information with chromatograms
+ex <- newExp(instrumental = instrumental,
+             phenotype = phenotype,
+             info = 'X. hylaeae metabolomics Wax colmun')
+
+```
+
+Compound deconvolution
+
+Parameter
+
+```{r echo=TRUE}
+
+# Deconvolution parameters for chromatogram analysis between 3.7 and 38.0 min
+dec.par.3to38 <- setDecPar(min.peak.width = 3,
+                           min.peak.height = 50,
+                           noise.threshold = 500,
+                           avoid.processing.mz = c(30:32),
+                           analysis.time = c(3.7, 38.0))
+# Deconvolution parameters for chromatogram analysis between 38.0 and 50.9 min
+dec.par.38to50 <- setDecPar(min.peak.width = 3,
+                           min.peak.height = 800,
+                           noise.threshold = 80,
+                           avoid.processing.mz = c(30:32),
+                           analysis.time = c(38.0, 50.9))
+
+```
+
+parallel processing
+
+```{r echo=TRUE}
+
+plan(future::multisession, workers = 5)
+
+```
+
+Deconvolution
+
+```{r echo=TRUE, warning=FALSE}
+
+# Chromatogram deconvolution between 3.7 and 38.0 min
+ex.3to38 <- deconvolveComp(ex, dec.par.3to38)
+# Chromatogram deconvolution between 38.0 and 50.9 min
+ex.38to50 <- deconvolveComp(ex, dec.par.38to50)
+
+```
+
+Alignment
+
+```{r echo=TRUE}
+
+# Alignment parameters
+ex.al.par <- setAlPar(min.spectra.cor = 0.85,
+                      max.time.dist = 3,
+                      mz.range = 50:500)
+# Alignment of 3.7-38.0 min dataset
+ex.3to38 <- alignComp(ex.3to38, alParameters = ex.al.par)
+# Alignment of 38.0-50.9 min dataset
+ex.38to50 <- alignComp(ex.38to50, alParameters = ex.al.par)
+
+```
+
+Missing compound recovery
+
+```{r echo=TRUE}
+
+# Missing compound recovery for 3.7-38.0 min dataset
+ex.3to38 <- recMissComp(ex.3to38, min.samples = 2)
+# Missing compound recovery for 38.0-50.9 min dataset
+ex.38to50 <- recMissComp(ex.38to50, min.samples = 2)
+
+```
+
+Exporting alignment feature list.
+
+```{r echo=TRUE}
+
+# Extracting alignment feature list 3.7-38.0 min
+feat_list.3to38 <- ex.3to38@Results@Alignment
+# Exporting alignment feature list
+write.csv(feat_list.3to38,
+          file = "Result/eRah_3to38min_GCMS_polar/eRah_feat_list_3to38min.csv")
+# Extracting alignment feature list 38.0-50.9 min
+feat_list.38to50 <- ex.38to50@Results@Alignment
+# Exporting alignment feature list
+write.csv(feat_list.38to50,
+          file = "Result/eRah_38to50min_GCMS_polar/eRah_feat_list_38to50min.csv")
+
+```
+
+# Identification
+
+Metabolite identification was by comparing all the spectra found against a reference database. The eRah default database was used to metabolite identification. Metabolite identification was improve by exporting all the spectra found (.msp) in eRah to NIST MS Search 2.4 software.
+
+```{r echo=TRUE, warning=FALSE}
+
+# Identification of 3.7-38.0 min dataset
+peak_iden.3to38 <- identifyComp(ex.3to38,
+                                id.database = mslib,
+                                mz.range = NULL,
+                                n.putative = 1)
+# Identification of 38.0-50.9 min dataset
+peak_iden.38to50 <- identifyComp(ex.38to50,
+                                 id.database = mslib,
+                                 mz.range = NULL,
+                                 n.putative = 1)
+
+```
+
+Exporting spectra to NIST MS Search software identification with NIST-20 library.
+
+```{r echo=TRUE}
+
+# 3.7-38.0 min dataset
+export2MSP(peak_iden.3to38,
+           store.path = "Result/eRah_3to38min_GCMS_polar",
+           alg.version = 2)
+# 38.0-50.9 min dataset
+export2MSP(peak_iden.38to50,
+           store.path = "Result/eRah_38to50min_GCMS_polar",
+           alg.version = 2)
+
+```
+

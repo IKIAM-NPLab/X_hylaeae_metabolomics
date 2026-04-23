@@ -9,7 +9,7 @@
 # Loading "MetaboCoreUtils" library
 library("MetaboCoreUtils")
 
-# Extra libraries
+# Loading libraries
 library("readxl")
 library("writexl")
 
@@ -25,7 +25,6 @@ alkane_ri <- c(900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800,
                2900, 3000, 3100, 3200, 3300)
 ## n-alkanes DataFrame
 alkane_data <- data.frame(rtime = alkane_rt, rindex = alkane_ri)
-
 
 ## Experimental Retention Index (RI) calculation
 ################################# MS-DIAL ######################################
@@ -65,6 +64,76 @@ msdial_rt <- msdial_rt[,c(7, 6, 1:2, 8, 3:5)]
 ##Exporting the MS-DIAL feature list with RI
 write_xlsx(msdial_rt, "../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_feat_list_with_RI_EI.xlsx")
 
+################################# eRah ######################################
+##Feature list deconvoluted with eRah
+erah3to49min <- read.csv("../X_hylaeae_metabolomics/Data/eRah_GCMS_apolar_feat_list_3to49min.csv",
+                         sep = ",", check.names = FALSE)
+erah3to49min <- data.frame(Alignment_ID = erah3to49min$AlignID,
+                           RT = erah3to49min$tmean,
+                           Exp_EI = erah3to49min$Spectra)
+erah3to49min$RI_tag <- NA
+erah49to54min <- read.csv("../X_hylaeae_metabolomics/Data/eRah_GCMS_apolar_feat_list_49to54min.csv",
+                            sep = ",", check.names = FALSE)
+erah49to54min <- data.frame(Alignment_ID = erah49to54min$AlignID,
+                            RT = erah49to54min$tmean,
+                            Exp_EI = erah49to54min$Spectra)
+erah49to54min$RI_tag <- NA
+erah54to56min <- read.csv("../X_hylaeae_metabolomics/Data/eRah_GCMS_apolar_feat_list_54to56min.csv",
+                            sep = ",", check.names = FALSE)
+erah54to56min <- data.frame(Alignment_ID = erah54to56min$AlignID,
+                            RT = erah54to56min$tmean,
+                            Exp_EI = erah54to56min$Spectra)
+erah54to56min$RI_tag <- NA
+##Merge files
+erah_rt <- bind_rows(
+  erah3to49min %>% mutate(Segment = "3-49min"),
+  erah49to54min %>% mutate(Segment = "49-54min"),
+  erah54to56min %>% mutate(Segment = "54-56min"))
+# Adding a global ID
+erah_rt <- erah_rt %>%
+  mutate(Feature_ID = row_number())
+##RI calculation
+erah_ri <- indexRtime(erah_rt$RT, alkane_data)
+##Adding the RI to the MS-DIAL feature list
+erah_rt$R_RI <- erah_ri
+## Moving columns
+erah_rt <- erah_rt[,c(6, 5, 1:2, 7, 3:4)]
+##Exporting the MS-DIAL feature list with RI
+write_xlsx(erah_rt, "../X_hylaeae_metabolomics/Result/erah_GCMS_apolar_feat_list_with_RI_EI.xlsx")
+
+################################# MZmine ######################################
+##Feature list deconvoluted with MZmine
+mzmine3to49min <- read.csv("../X_hylaeae_metabolomics/Data/MZmine_GCMS_apolar_feat_list_3-49min.csv",
+                           sep = ",", check.names = FALSE)
+mzmine3to49min <- data.frame(Alignment_ID = mzmine3to49min$`row ID`,
+                             RT = mzmine3to49min$`row retention time`)
+mzmine3to49min$RI_tag <- NA
+mzmine49to54min <- read.csv("../X_hylaeae_metabolomics/Data/MZmine_GCMS_apolar_feat_list_49-54min.csv",
+                            sep = ",", check.names = FALSE)
+mzmine49to54min <- data.frame(Alignment_ID = mzmine49to54min$`row ID`,
+                              RT = mzmine49to54min$`row retention time`)
+mzmine49to54min$RI_tag <- NA
+mzmine54to56min <- read.csv("../X_hylaeae_metabolomics/Data/MZmine_GCMS_apolar_feat_list_54-56min.csv",
+                            sep = ",", check.names = FALSE)
+mzmine54to56min <- data.frame(Alignment_ID = mzmine54to56min$`row ID`,
+                              RT = mzmine54to56min$`row retention time`)
+mzmine54to56min$RI_tag <- NA
+##Merge files
+mzmine_rt <- bind_rows(
+  mzmine3to49min %>% mutate(Segment = "3-49min"),
+  mzmine49to54min %>% mutate(Segment = "49-54min"),
+  mzmine54to56min %>% mutate(Segment = "54-56min"))
+# Adding a global ID
+mzmine_rt <- mzmine_rt %>%
+  mutate(Feature_ID = row_number())
+##RI calculation
+mzmine_ri <- indexRtime(mzmine_rt$RT, alkane_data)
+##Adding the RI to the MS-DIAL feature list
+mzmine_rt$R_RI <- mzmine_ri
+## Moving columns
+mzmine_rt <- mzmine_rt[,c(5, 4, 1:2, 6, 3)]
+##Exporting the MS-DIAL feature list with RI
+write_xlsx(mzmine_rt, "../X_hylaeae_metabolomics/Result/MZmine_GCMS_apolar_feat_list_with_RI.xlsx")
 
 
 
