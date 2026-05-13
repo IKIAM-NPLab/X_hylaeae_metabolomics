@@ -1,0 +1,952 @@
+Procedures to integrate the identified metabolites using deconvoluted
+data in four algorithms (MZmine, MS-DIAL, eRah, and MSHub) and against
+libraries’ spectra of NIST 20 (*mainlib* and *replib*) using NIS MS
+Search software - Rtx-5 Semi-standard non-polar colum
+================
+Jefferson Pastuna
+2026-05-12
+
+- <a href="#loading-libraries-and-data"
+  id="toc-loading-libraries-and-data">Loading libraries and data</a>
+- <a href="#clean-repeated-metabolites"
+  id="toc-clean-repeated-metabolites">Clean repeated metabolites</a>
+- <a href="#discrepancies-between-software"
+  id="toc-discrepancies-between-software">Discrepancies between
+  software</a>
+  - <a href="#group-by-rt" id="toc-group-by-rt">Group by RT</a>
+  - <a href="#group-by-ei-spectrum" id="toc-group-by-ei-spectrum">Group by
+    EI spectrum</a>
+- <a href="#result" id="toc-result">Result</a>
+  - <a href="#identification-by-software"
+    id="toc-identification-by-software">Identification by software</a>
+  - <a href="#plot-discrepancies" id="toc-plot-discrepancies">Plot
+    discrepancies</a>
+  - <a href="#agreement-and-discrepancies"
+    id="toc-agreement-and-discrepancies">Agreement and discrepancies</a>
+
+## Loading libraries and data
+
+Loading the necessary libraries.
+
+``` r
+library(readxl)
+library(dplyr)
+library(stringr)
+library(purrr)
+library(ggplot2)
+library(ComplexHeatmap)
+library(patchwork)
+library(writexl)
+```
+
+Loading the identified list of each software, MZmine, MS-DIAL, eRah, and
+MSHub.
+
+``` r
+# Loading features list of each software with metabolite identification
+mzmine_flist <- read_excel("../X_hylaeae_metabolomics/Result/MZmine_GCMS_apolar_IDs.xlsx")
+msdial_flist <- read_excel("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_IDs.xlsx")
+erah_flist <- read_excel("../X_hylaeae_metabolomics/Result/eRah_GCMS_apolar_IDs.xlsx")
+mshub_flist <- read_excel("../X_hylaeae_metabolomics/Result/MSHub_GCMS_apolar_IDs.xlsx")
+
+# Merge all feature list
+all_flist <- bind_rows(
+  mzmine_flist %>% mutate(Alignment_ID = as.character(Alignment_ID),
+                          Software = "MZmine"),
+  msdial_flist %>% mutate(Alignment_ID = as.character(Alignment_ID),
+                          Software = "MS-DIAL"),
+  erah_flist %>% mutate(Alignment_ID = as.character(Alignment_ID),
+                        Software = "eRah"),
+  mshub_flist %>% mutate(Alignment_ID = as.character(Alignment_ID),
+                         Software = "MSHub"))
+```
+
+The following code extracts the top 5 match ions with the NIST library.
+This data is very important in the following steps: to compare features
+using the EI spectrum and to annotate metabolite names in the feature
+list for statistical analysis.
+
+``` r
+# Function to extract the 5 most abundant ions that matched the NIST library
+five_match_ion <- function(exp_mz, exp_int, nist_mz) {
+  # Avoid NA values
+  if (is.na(exp_mz) | is.na(exp_int) | is.na(nist_mz)) {
+    return(NA_character_)
+  }
+  # Extracting spectrum data
+  mz_exp <- as.numeric(str_split(exp_mz, ",")[[1]])
+  int_exp <- as.numeric(str_split(exp_int, ",")[[1]])
+  mz_nist <- as.numeric(str_split(nist_mz, ",")[[1]])
+  # Ensuring the ions and intensity values
+  if (length(mz_exp) != length(int_exp)) {
+    return(NA_character_)
+  }
+  # Experimental DataFrame
+  df_exp <- tibble(mz = mz_exp, intensity = int_exp)
+  # Finding ions match
+  df_match <- df_exp %>%
+    filter(mz %in% mz_nist)
+  # If there is no match
+  if (nrow(df_match) == 0) {
+    return(NA_character_)
+  }
+  # 5 most abundant ions that matched the NIST library
+  df_top5 <- df_match %>%
+    arrange(desc(intensity)) %>%
+    slice_head(n = 5)
+  # Return as string (mz)
+  paste(df_top5$mz, collapse = ",")
+}
+# Using the function five_match_ion to extract the top 5 ions
+all_flist <- all_flist %>%
+  mutate(top5_match_mz = pmap_chr(list(exp_mz_ns, exp_int_ns, nist_mz),
+                                  five_match_ion))
+```
+
+## Clean repeated metabolites
+
+The repeated metabolites were cleaned using the same framework used in
+the independent software: if the same metabolite was assigned in two or
+more deconvolution software, the best match factor was prioritized in
+the cases where the RI values are between 0 and 10 (the in-house library
+was prioritized, and then the filter was applied). For metabolites with
+RI errors between 10 and 100, the metabolite name was assigned to the
+software with the lower RI error; in cases of identical RI errors, the
+best match factor was prioritized. In cases where metabolites had an RI
+error \> 100 or were NA, the metabolite name was assigned to the
+software with the highest match factor. Metabolites that do not meet the
+condition described above were tagged as “Software repeated (RI error
+\<10)”, “Software repeated (RI error 10-100)”, and “Software repeated
+(RI error \>100/NA)”, accordingly.
+
+``` r
+# Filtering only features with clean IDs in each software
+nflag_flist <- all_flist %>%
+  filter(is.na(Match_flag))
+# Filtering the rest of the features (flagged features)
+yflag_flist <- all_flist %>%
+  filter(!is.na(Match_flag))
+# Flag repeated metabolites identified by different software
+rep_ids <- nflag_flist %>%
+  group_by(Name) %>%
+  mutate(in_0_10   = !is.na(RI_Error) & RI_Error <= 10,
+         in_10_100 = !is.na(RI_Error) & RI_Error > 10 & RI_Error <= 100,
+         has_0_10   = any(in_0_10),
+         has_10_100 = any(in_10_100),
+         is_ikiam = Library == "ikiam_npl_gcms_lib") %>%
+  # Define active group
+  mutate(active_group = case_when(
+    has_0_10 ~ "0_10",
+    !has_0_10 & has_10_100 ~ "10_100",
+    TRUE ~ "gt100")) %>%
+  # Define who participates in the ranking
+  mutate(candidate = case_when(active_group == "0_10"   ~ in_0_10,
+                               active_group == "10_100" ~ in_10_100,
+                               TRUE ~ TRUE)) %>%
+  # Order for candidates only
+  arrange(Name,
+    desc(candidate),  # Candidates first
+    # PRIORITY 1
+    desc(ifelse(candidate & active_group == "0_10", is_ikiam, FALSE)),
+    desc(ifelse(candidate & active_group == "0_10", MatchFactor, NA)),
+    ifelse(candidate & active_group == "0_10", RI_Error, Inf),
+    # PRIORITY 2
+    ifelse(candidate & active_group == "10_100", RI_Error, Inf),
+    desc(ifelse(candidate & active_group == "10_100", MatchFactor, NA)),
+    # PRIORITY 3
+    desc(ifelse(candidate & active_group == "gt100", MatchFactor, NA))) %>%
+  group_by(Name) %>%
+  mutate(rank_name = ifelse(candidate, row_number(), NA_integer_)) %>%
+  ungroup() %>%
+  # Labeled
+  mutate(Match_flag = case_when(
+    rank_name == 1 ~ Match_flag,
+    active_group == "0_10" ~ "Software repeated (RI error <10)",
+    active_group == "10_100" ~ "Software repeated (RI error 10-100)",
+    TRUE ~ "Software repeated (RI error >100/NA)")) %>%
+  select(-in_0_10, -in_10_100, -has_0_10, -has_10_100,
+         -is_ikiam, -active_group, -candidate, -rank_name)
+# Reintegrate the flagged features list with the no-flagged-features list
+rep_ids <- bind_rows(rep_ids, yflag_flist)
+```
+
+This output is the first result of the cleaning step of the feature list
+of metabolites identified using multiple deconvolution platforms. The
+result is a feature list with no duplicate metabolites. Only the
+metabolites with the best match, based on experimental data from the
+deconvolution software, are retained; the rest are tagged as repeated
+metabolites.
+
+## Discrepancies between software
+
+Discrepancies between software refer to the “same deconvoluted feature”
+identified under different metabolite names across different
+deconvolution software. To determine if the same feature was identified
+with different compound names across different deconvolution software,
+the experimental top 5 ions (more abundant) that matched with the NIST
+library will be used, and the feature in a short retention time (we use
+0.04 min, this time was determined experimentally, since the time shift
+observed in the raw data) will be compared with each other.
+
+### Group by RT
+
+The following RT grouping algoritm, first group features in chain from
+minor RT from mayor RT, if the close feature are in the RT tolerance, in
+this case 0.04 min, its gruped in the same group; in the second stage,
+the algoritm separate feature from the group if it is out of RT
+toletance by comparing the feature with lowest RT and the rest of the
+feature in the group (this break the chain effec); them the firts group
+method will be apply again to group the separated features in a new
+group, first and secong grouping algoritm is repeated until the group
+have not feature out of the RT tolerence.
+
+``` r
+# Filtering features without a flag
+nflag_rep_ids <- rep_ids %>%
+  filter(is.na(Match_flag))
+# Filtering the rest of the features
+yflag_rep_ids <- rep_ids %>%
+  filter(!is.na(Match_flag))
+# Function to group the features with close RT
+rt_group <- function(df, tol = 0.04, max_iter = 20) {
+  iter <- 1
+  # Beginning an empty group
+  df <- df %>% arrange(RT) %>% mutate(RT_group = NA_integer_)
+  repeat {
+    message("Iteración: ", iter)
+    # Start grouping
+    df <- df %>%
+      arrange(RT) %>%
+      mutate(RT_group = {
+        grp <- integer(n())
+        current_group <- 1
+        anchor <- RT[1]
+        grp[1] <- current_group
+        for (i in 2:n()) {
+          if ((RT[i] - anchor) <= tol) {
+            grp[i] <- current_group
+            } else {
+              current_group <- current_group + 1
+              anchor <- RT[i]
+              grp[i] <- current_group
+            }}
+        grp
+        })
+    # Clean group ensuring RT tolerance
+    df <- df %>%
+      group_by(RT_group) %>%
+      mutate(RT_min = min(RT),
+             group_again = ifelse(RT - RT_min > tol,
+                                  "group_again",
+                                  NA_character_)) %>%
+      ungroup()
+    # Condition to stop grouping
+    if (!any(df$group_again == "group_again", na.rm = TRUE) || iter > max_iter) {
+      message("Finalizado en iteración: ", iter)
+      break}
+    # Clean RT_group if it corresponds to another group
+    df <- df %>%
+      mutate(RT_group = ifelse(group_again == "group_again", NA, RT_group)) %>%
+      arrange(RT)
+    iter <- iter + 1
+  }
+  # Delete auxiliary columns
+  df %>%
+    select(-RT_min, -group_again)
+}
+# Grouping the features with a short RT window (0.04 min)
+rep_rt <- rt_group(df = nflag_rep_ids, tol = 0.04, max_iter = 20) %>%
+  # Measure the group amount
+  group_by(RT_group) %>%
+  mutate(n_in_group = n()) %>%
+  # Replace the NA value in the groups with one feature
+  mutate(RT_group = ifelse(n_in_group == 1, NA, RT_group)) %>%
+  ungroup() %>%
+  select(-n_in_group)
+```
+
+    ## Iteración: 1
+
+    ## Finalizado en iteración: 1
+
+``` r
+# Reintegrate the flagged features list with the no-flagged-features list
+rep_rt  <- bind_rows(rep_rt, yflag_rep_ids)
+```
+
+### Group by EI spectrum
+
+The following code compare the top 5 ions of features in the same group,
+the code determine what ion is most frecuency in the group, and use that
+number to find another ions that have same frecuency, if some feature do
+not have comon ion the code add a “group_again” tag (this feature is
+exclude of the group because could be other metabolite that elute in
+close RT). In other words, the feature that shares the same ions could
+correspond to a single feature, but it matched with different
+metabolites due to the use of 4 different deconvolution algorithms.
+
+**NOTE.** We use the top 5 ions to compare features rather than the
+complete EI-deconvoluted mass spectrum because, for the statistical
+analysis, we will use the most abundant ions of the mass spectrum to
+annotate the metabolite name. Also, if two features coelute at the same
+or very close retention time, we can elucidate them or consider them as
+two metabolites only if their mass spectra differ (i.e., have unique
+ions for each compound). Therefore, the code seeks the characteristic
+ions of possible coeluting compounds, and these ions would be among the
+first 5 ions matched to the spectrum library.
+
+``` r
+# Filtering features without a flag
+nflag_rep_ids <- rep_rt %>%
+  filter(is.na(Match_flag))
+# Filtering the rest of the features
+yflag_rep_ids <- rep_rt %>%
+  filter(!is.na(Match_flag))
+# Function to extract a numeric vector of the EI spectrum
+parse_top5_mz <- function(x) {
+  if (is.na(x)) return(numeric(0))
+  as.numeric(str_split(x, ",")[[1]])
+}
+# Search shared ions between groups
+share_ion <- nflag_rep_ids %>%
+  mutate(mz_list = map(top5_match_mz, parse_top5_mz)) %>%
+  group_by(RT_group) %>%
+  group_modify(~ {
+    data <- .x
+    key  <- .y
+    n_group <- nrow(data)
+    # Case: NA or group of 1
+    if (is.na(key$RT_group) || n_group <= 1) {
+      data$Share_ion <- NA_character_
+      return(data)
+    }
+    # Count ion frequency
+    freq <- table(unlist(data$mz_list))
+    # Case: large groups without shared ions
+    if (n_group >= 3 && max(freq) == 1) {
+      data$Share_ion <- "group_again"
+      return(data)
+    }
+    # Logic according to group size
+    if (n_group == 2) {
+      # Only ions shared in both features
+      top_ions <- as.numeric(names(freq[freq == 2]))
+    } else {
+        # Original logic (maximum frequency)
+      max_freq <- max(freq)
+      top_ions <- as.numeric(names(freq[freq == max_freq]))
+    }
+    # Row assignment
+    data$Share_ion <- map_chr(data$mz_list, ~ {
+      if (length(top_ions) > 0 && any(top_ions %in% .x)) {
+        paste(intersect(.x, top_ions), collapse = ",")
+      } else {
+        "group_again"
+      }
+    })
+    data
+  }) %>%
+  ungroup() %>%
+  select(-mz_list)
+# Reintegrate the flagged features list with the no-flagged-features list
+share_ion  <- bind_rows(share_ion, yflag_rep_ids)
+```
+
+In the first stage, we grouped features with a short RT (we used an RT
+tolerance of 0.04 min) and compared the 5 most abundant ions matching
+the NIST library with other features in the same group. If the EI
+spectrum of a feature from the group did not share ions with the group,
+it is separated from the group (these features will be analyzed post
+hoc). Now we will use the groups to select the best match within each
+group (since each group shares ions with the others, we can treat each
+group as a feature with multiple matches).
+
+``` r
+# Filtering features with group and without "group_again" flag
+gp_share_ion <- share_ion %>%
+  filter(!(Share_ion == "group_again") & !is.na(Share_ion))
+# Filtering the rest of features
+rest_share_ion <- share_ion %>%
+  filter(Share_ion == "group_again" | is.na(Share_ion))
+# Flag RT repeated metabolites
+flag_share_ion <- gp_share_ion %>%
+  group_by(RT_group) %>%
+  mutate(in_0_10   = !is.na(RI_Error) & RI_Error <= 10,
+         in_10_100 = !is.na(RI_Error) & RI_Error > 10 & RI_Error <= 100,
+         has_0_10   = any(in_0_10),
+         has_10_100 = any(in_10_100),
+         is_ikiam = Library == "ikiam_npl_gcms_lib") %>%
+  # Define active group
+  mutate(active_group = case_when(
+    has_0_10 ~ "0_10",
+    !has_0_10 & has_10_100 ~ "10_100",
+    TRUE ~ "gt100")) %>%
+  # Define who participates in the ranking
+  mutate(candidate = case_when(active_group == "0_10"   ~ in_0_10,
+                               active_group == "10_100" ~ in_10_100,
+                               TRUE ~ TRUE)) %>%
+  # Order for candidates only
+  arrange(RT_group,
+    desc(candidate),  # Candidates first
+    # PRIORITY 1
+    desc(ifelse(candidate & active_group == "0_10", is_ikiam, FALSE)),
+    desc(ifelse(candidate & active_group == "0_10", MatchFactor, NA)),
+    ifelse(candidate & active_group == "0_10", RI_Error, Inf),
+    # PRIORITY 2
+    ifelse(candidate & active_group == "10_100", RI_Error, Inf),
+    desc(ifelse(candidate & active_group == "10_100", MatchFactor, NA)),
+    # PRIORITY 3
+    desc(ifelse(candidate & active_group == "gt100", MatchFactor, NA))) %>%
+  group_by(RT_group) %>%
+  mutate(rank_name = ifelse(candidate, row_number(), NA_integer_)) %>%
+  ungroup() %>%
+  # Labeled
+  mutate(Match_flag = case_when(
+    rank_name == 1 ~ Match_flag,
+    active_group == "0_10" ~ "RT repeated (RI error <10)",
+    active_group == "10_100" ~ "RT repeated (RI error 10-100)",
+    TRUE ~ "RT repeated (RI error >100/NA)")) %>%
+  select(-in_0_10, -in_10_100, -has_0_10, -has_10_100,
+         -is_ikiam, -active_group, -candidate, -rank_name)
+# Reintegrate all data
+rep_share_ion <- bind_rows(flag_share_ion, rest_share_ion)
+```
+
+In the following code we will filter the features flagged in the
+Match_flag column, and them we will analysed the features with the tag
+“group_again”. Also, we will add a tag in the column Match_flag if there
+are more of 1 feature in en the group (that mean that are features in
+close RT, 0.04 in this case, that was deconvoluted as different
+compound).
+
+The code aimed to verify whether the features flagged as “group_again”
+could be joined to the existing group. The code ordering the RT from
+minor to major, them search neigbord features in the ± RT tolerance, if
+there are feature in the RT tolerance (we use a windows of ± 0.04 min)
+the code verified if the feature share the top 5 ions with the
+caracteristics ions of the group (ions of the columm Share_ion), if
+there are share ion, the code register the ions in the Share_ion column,
+in contrast, if there are not share ion, the feature will be tag as
+“Coelute_compound”.
+
+Also, a new column, “Matched_RT_group,” was added to record the group
+that the “group_again”- flagged feature joins. This new column will be
+used to verify whether a new group will be created. If a new group is
+created, the last code needs to be applied again to select the best
+match. On the other hand, if no new group is created, it means the
+consensus identification list is ready.
+
+``` r
+# Filtering features without repeated feature in the short RT
+n_rep_share_ion <- rep_share_ion %>%
+  filter(is.na(Match_flag))
+# Filtering the rest of features
+y_rep_share_ion <- rep_share_ion %>%
+  filter(!is.na(Match_flag))
+# Function to extract numeric vector of EI spectrum
+parse_ei_mz <- function(x) {
+  if (is.na(x)) return(numeric(0))
+  as.numeric(str_split(x, ",")[[1]])
+}
+# Function to scan coelution compounds
+scan_coelution <- function(df, rt_tol = 0.04) {
+  df <- df %>%
+    arrange(RT) %>%
+    mutate(mz_top5  = map(top5_match_mz, parse_ei_mz),
+           mz_share = map(
+             Share_ion,
+             ~ ifelse(.x == "group_again" | is.na(.x), NA, .x)) %>%
+             map(parse_ei_mz),
+           # New column
+           Matched_RT_group = NA_integer_)
+  n <- nrow(df)
+  for (i in seq_len(n)) {
+    # Only work with group_again
+    if (is.na(df$Share_ion[i]) || df$Share_ion[i] != "group_again") next
+    rt_i  <- df$RT[i]
+    mz_i  <- df$mz_top5[[i]]
+    grp_i <- df$RT_group[i]
+    found_match   <- FALSE
+    matched_ions  <- c()
+    matched_group <- NA_integer_
+    # Search back
+    j <- i - 1
+    while (j >= 1) {
+      # Stop if RT tolerance is exceeded
+      if ((rt_i - df$RT[j]) > rt_tol) break
+      # Exclude same RT_group and NA
+      if (!is.na(df$RT_group[j]) &&
+          df$RT_group[j] != grp_i) {
+        ions_j <- df$mz_share[[j]]
+        if (length(ions_j) > 0) {
+          inter <- intersect(mz_i, ions_j)
+          # Match found
+          if (length(inter) > 0) {
+            matched_ions <- unique(c(matched_ions, inter))
+            matched_group <- df$RT_group[j]
+            found_match <- TRUE
+          }
+        }
+      }
+      j <- j - 1
+    }
+    # Search forward
+    j <- i + 1
+    while (j <= n) {
+      # Stop if RT tolerance is exceeded
+      if ((df$RT[j] - rt_i) > rt_tol) break
+      if (!is.na(df$RT_group[j]) &&
+          df$RT_group[j] != grp_i) {
+        ions_j <- df$mz_share[[j]]
+        if (length(ions_j) > 0) {
+          inter <- intersect(mz_i, ions_j)
+          # Match found
+          if (length(inter) > 0) {
+            matched_ions <- unique(c(matched_ions, inter))
+            matched_group <- df$RT_group[j]
+            found_match <- TRUE
+          }
+        }
+      }
+      j <- j + 1
+    }
+    # Final assignment
+    if (found_match) {
+      df$Share_ion[i] <- paste(sort(matched_ions),
+                               collapse = ",")
+      df$Matched_RT_group[i] <- matched_group
+    } else {
+      df$Share_ion[i] <- "Coelute_compound"
+    }
+  }
+  df %>%
+    select(-mz_top5, -mz_share)
+}
+# Determine if there are coelution compounds
+coelu_scan <- scan_coelution(n_rep_share_ion, rt_tol = 0.04)
+```
+
+In the next code snippet, we verify whether a “group_again”-flagged
+feature joins a new group; the code checks whether there are any values
+in the Matched_RT_group column.
+
+``` r
+# Verify if new groups were created
+if (all(is.na(coelu_scan$Matched_RT_group))) {
+  
+  message("Successful! The final identification list is ready")
+  
+} else {
+  
+  message("New groups were created, repeat the last code")
+}
+```
+
+    ## Successful! The final identification list is ready
+
+Because the “group_again”-flagged features do not create a new group (as
+shown above), we can extract key summaries from the final consensus
+identification list. Some of the important results that we can report
+are (a) metabolite identification between different deconvolution
+software (agreement between software), (b) metabolites selected as best
+but with identification discrepancies between different deconvolution
+software, (c) coeluted features (different features that eluted in the
+close RT, in this case we used 0.04 min), and (d) the consensus
+identification list.
+
+In the following code, we merge all feature lists from four different
+deconvolution software.
+
+``` r
+# Flagging coeluted features
+coelu_scan <- coelu_scan %>%
+  mutate(Match_flag = case_when(
+    Share_ion == "Coelute_compound" ~ "Coelute IDs"))
+# Reintegrating all feature list resulted from rep_share_ion
+coelu_feat <- bind_rows(coelu_scan, y_rep_share_ion)
+```
+
+## Result
+
+To report (a) metabolite identification between different deconvolution
+software (agreement between software), we filter the final metabolite
+names and search if that metabolite was identified in other
+deconvolution software; it will be reported as metabolites identified in
+the four deconvolution software, those identified in 3 deconvolution
+software, 2 deconvolution software, and those identified in a specific
+deconvolution software..
+
+``` r
+# Parameters
+rt_tol <- 0.05
+# 1. Consensus metabolite list
+id_best <- coelu_feat %>%
+  filter(is.na(Match_flag) |
+           Match_flag == "" |
+           Match_flag == "Coelute IDs") %>%
+  arrange(Name, RT)
+# 2. Use consensus names to search in Original dataframe
+consensus_names <- unique(id_best$Name)
+candidate_rows <- coelu_feat %>%
+  filter(Name %in% consensus_names)
+# 3. Compare RT consensus vs candidate rows (Keep only rows within ±0.05 RT)
+id_agre <- map_dfr(seq_len(nrow(id_best)), function(i) {
+  # Consensus feature
+  ref_name <- id_best$Name[i]
+  ref_rt   <- id_best$RT[i]
+  # Search same metabolite name
+  candidates <- candidate_rows %>%
+    filter(Name == ref_name)
+  # RT filtering
+  matched <- candidates %>%
+    filter(abs(RT - ref_rt) <= rt_tol) %>%
+    mutate(Consensus_RT = ref_rt)
+  matched
+})
+# Remove duplicates if necessary
+id_agre <- id_agre %>%
+  distinct()
+# 4. Count software occurrence
+id_software <- id_agre %>%
+  group_by(Name) %>%
+  summarise(n_softwares = n_distinct(Software),
+            softwares = paste(
+              sort(unique(Software)),
+              collapse = ", "),
+            .groups = "drop")
+# 5. Software classification
+id_classify <- id_software %>%
+  mutate(Software_class = case_when(
+    n_softwares == 4 ~ "Identified in 4 softwares",
+    n_softwares == 3 ~ "Identified in 3 softwares",
+    n_softwares == 2 ~ "Identified in 2 softwares",
+    n_softwares == 1 & softwares == "MZmine" ~ "Unique to MZmine",
+    n_softwares == 1 & softwares == "MS-DIAL" ~ "Unique to MS-DIAL",
+    n_softwares == 1 & softwares == "eRah" ~ "Unique to eRah",
+    n_softwares == 1 & softwares == "MSHub" ~ "Unique to MSHub",
+    TRUE ~ "Other")) %>%
+  # Adding column to UpSet plot
+  mutate(MZmine = ifelse(str_detect(softwares, "\\bMZmine\\b"), 1, 0),
+         `MS-DIAL` = ifelse(str_detect(softwares, "\\bMS-DIAL\\b"), 1, 0),
+         MSHub = ifelse(str_detect(softwares, "\\bMSHub\\b"), 1, 0),
+         eRah = ifelse(str_detect(softwares, "\\beRah\\b"), 1, 0))
+# 6. Final output
+soft_classify_feat <- id_best %>%
+  left_join(id_classify,
+            by = "Name")
+```
+
+### Identification by software
+
+To demonstrate how the metabolites were identified across different
+software, we will present the results in an UpSet plot. We will inspect
+how the software identified at all identification levels, at levels 1
+and 2 only, and at level 3 only. It helps to know which software is
+better in case the searcher would like to use only one.
+
+``` r
+# All identification levels
+all_upset_plot <- soft_classify_feat %>%
+  select(Name, MZmine, 'MS-DIAL', MSHub, eRah)
+# Identification level 1 and 2
+il12_upset_plot <- soft_classify_feat %>%
+  filter(IL == "Level 1" | IL == "Level 2") %>%
+  select(Name, MZmine, 'MS-DIAL', MSHub, eRah)
+# Identification level 3
+il3_upset_plot <- soft_classify_feat %>%
+  filter(IL == "Level 3") %>%
+  select(Name, MZmine, 'MS-DIAL', MSHub, eRah)
+# Make the combination matrix
+all_comb_mat = make_comb_mat(all_upset_plot)
+il12_comb_mat = make_comb_mat(il12_upset_plot)
+il3_comb_mat = make_comb_mat(il3_upset_plot)
+# UpSet plot
+all_upset <- UpSet(all_comb_mat, row_names_gp = gpar(fontsize = 10),
+                   column_title = "Level 1 to 3 metabolites",
+                   top_annotation =
+                     upset_top_annotation(all_comb_mat,
+                                          gp = gpar(fill = "#F8766D",
+                                                    col = "#F8766D"),
+                                          add_numbers = TRUE,
+                                          annotation_name_rot = 90),
+                   right_annotation =
+                     upset_right_annotation(all_comb_mat,
+                                            gp = gpar(fill = "#1C6AA8",
+                                                      col = "#1C6AA8"),
+                                            add_numbers = TRUE),
+                   set_order = c("MZmine", "MS-DIAL", "eRah", "MSHub"))
+il12_upset <- UpSet(il12_comb_mat, row_names_gp = gpar(fontsize = 10),
+                    column_title = "Level 1 and 2 metabolites",
+                    top_annotation =
+                      upset_top_annotation(il12_comb_mat,
+                                           gp = gpar(fill = "#F8766D",
+                                                     col = "#F8766D"),
+                                           add_numbers = TRUE,
+                                           annotation_name_rot = 90),
+                    right_annotation =
+                      upset_right_annotation(il12_comb_mat,
+                                             gp = gpar(fill = "#1C6AA8",
+                                                       col = "#1C6AA8"),
+                                             add_numbers = TRUE),
+                    set_order = c("MZmine", "MS-DIAL", "eRah", "MSHub"))
+il3_upset <- UpSet(il3_comb_mat, row_names_gp = gpar(fontsize = 10),
+                   column_title = "Level 3 metabolites",
+                   top_annotation =
+                     upset_top_annotation(il3_comb_mat,
+                                          gp = gpar(fill = "#F8766D",
+                                                    col = "#F8766D"),
+                                          add_numbers = TRUE,
+                                          annotation_name_rot = 90),
+                   right_annotation =
+                     upset_right_annotation(il3_comb_mat,
+                                            gp = gpar(fill = "#1C6AA8",
+                                                      col = "#1C6AA8"),
+                                            add_numbers = TRUE),
+                   set_order = c("MZmine", "MS-DIAL", "eRah", "MSHub"))
+all_upset + il12_upset + il3_upset
+```
+
+![](Consensus_IDs_Apolar_column_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+
+### Plot discrepancies
+
+To report (b) metabolites selected as the best but with identification
+discrepancies between deconvolution software, we define the meaning of
+discrepancies; discrepancies between software will be considered when
+features with a short retention time (e.g., 0.04 min) and spectral
+similarity (at least one ion match within the group) are annotated with
+different metabolite names. In the following code, we plot the mass
+spectrum of the features in each group, which helps us visually inspect
+the results of the code filtering.
+
+``` r
+# Function to parse numeric vectors
+parse_num <- function(x) {
+  if (is.na(x) || x == "") return(numeric(0))
+  as.numeric(str_split(x, ",")[[1]])
+}
+# Function to generate EI spectrum plots by RT group
+plot_gp_ei <- function(df,
+                       save_pdf = FALSE,
+                       outdir = NULL,
+                       pdf_width = 12,
+                       height_per_feature = 2.0) {
+  # Create output directory if requested
+  if (save_pdf) {
+    if (is.null(outdir)) {
+      stop("Please provide 'outdir' to save PDF files.")
+    }
+    if (!dir.exists(outdir)) {
+      dir.create(outdir, recursive = TRUE)
+    }
+  }
+  # Keep only grouped features
+  df_plot <- df %>%
+    filter(!is.na(RT_group)) %>%
+    # NA as best match, others as repeated
+    mutate(
+      Match_flag = case_when(
+        Match_flag == "RT repeated (RI error <10)" |
+          Match_flag == "RT repeated (RI error 10-100)" |
+          Match_flag == "RT repeated (RI error >100/NA)" ~ "Repeated",
+        is.na(Match_flag) ~ "Best match",
+        Match_flag == "Coelute IDs" ~ "Coelution",
+        TRUE ~ Match_flag
+      )
+    )
+  # Unique groups
+  groups <- unique(df_plot$RT_group)
+  # Store plots
+  all_group_plots <- list()
+  # Loop groups
+  for (g in groups) {
+    # Subset group
+    group_df <- df_plot %>%
+      filter(RT_group == g) %>%
+      arrange(RT)
+    # Shared X axis across group
+    all_mz_group <- group_df$exp_mz_ns %>%
+      map(parse_num) %>%
+      unlist()
+    x_max <- ceiling(max(all_mz_group, na.rm = TRUE))
+    # Store feature plots
+    feature_plots <- list()
+    # Loop features
+    for (i in seq_len(nrow(group_df))) {
+      row <- group_df[i, ]
+      # Parse spectra
+      mz  <- parse_num(row$exp_mz_ns)
+      int <- parse_num(row$exp_int_ns)
+      # Shared ions
+      shared <- parse_num(
+        ifelse(row$Share_ion %in% c("Coelute IDs", "group_again", NA),
+               "",
+               row$Share_ion))
+      # Five most abundant ion
+      top5_ion_name <- parse_num(
+        ifelse(row$top5_match_mz %in% NA,
+               "",
+               row$top5_match_mz))
+      # Build spectrum dataframe
+      spec_df <- data.frame(mz = mz, intensity = int)
+      # Ion classification
+      spec_df <- spec_df %>%
+        mutate(ion_type = ifelse(mz %in% shared, "shared", "unique"),
+               Share_ion = ifelse(mz %in% shared, as.character(mz),
+                                  NA_character_),
+               name_ion = ifelse(mz %in% top5_ion_name, as.character(mz),
+                                 NA_character_))
+      # Annotation text
+      ann_text <- paste0("Group: ", g,
+                         "\nSoftware: ", row$Software,
+                         "\nRT: ", round(row$RT, 3), " min",
+                         "\nMatch: ", row$MatchFactor,
+                         "\nRI error: ", row$RI_Error,
+                         "\n", row$Match_flag)
+      # Spectrum plot
+      p <- ggplot(spec_df, aes(x = mz, y = intensity, color = ion_type)) +
+        geom_segment(aes(xend = mz, yend = 0), linewidth = 0.8) +
+        scale_color_manual(values = c("shared" = "red", "unique" = "blue")) +
+        geom_text( aes(label = name_ion), vjust = -0.2, size = 3) +
+        # Shared X axis
+        scale_x_continuous(limits = c(50, x_max + 2),
+                           breaks = seq(50, x_max, by = 20)) +
+        labs(title = NULL, x = NULL, y = "Relative abundance") +
+        # Metabolite name
+        annotate("text", x = 50,  y = 130, label = row$Name, hjust = 0,
+                 vjust = 1, size = 4, fontface = "plain") +
+        # Metadata
+        annotate("text", x = x_max + 2, y = 130, label = ann_text, hjust = 0,
+                 vjust = 1, size = 3) +
+        theme_classic() +
+        theme(legend.position = "none", plot.margin = margin(10, 90, 10, 10)) +
+        coord_cartesian(clip = "off")
+      feature_plots[[i]] <- p
+    }
+    # Vertical stack
+    group_patch <- wrap_plots(feature_plots, ncol = 1) +
+      plot_annotation(caption = "m/z",
+                      theme = theme(
+                        plot.caption = element_text(hjust = 0.5, face = "italic")))
+    # Store plot
+    all_group_plots[[paste0("Group_", g)]] <- group_patch
+    # Save PDF
+    if (save_pdf) {
+      pdf_height <- max(4, nrow(group_df) * height_per_feature)
+      ggsave(filename = file.path(outdir,  paste0("Group_", g, ".pdf")),
+             plot = group_patch, width = pdf_width, height = pdf_height,
+             units = "in")
+    }
+    }
+  return(all_group_plots)
+}
+# Export plot
+plot_gp <- plot_gp_ei(
+  df = coelu_feat, save_pdf = TRUE,
+  outdir = "../X_hylaeae_metabolomics/Result/NIST_MS_Search_apolar/Group_plots")
+# Example of plot
+plot_gp[["Group_103"]]
+```
+
+![](Consensus_IDs_Apolar_column_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+
+### Agreement and discrepancies
+
+To a graphical representation of: (b) metabolites selected as best but
+with identification discrepancies between different deconvolution
+software, (c) coeluted features (different features that eluted in the
+close RT, in this case we used 0.04 min). We use a pie chart, as shown
+below, to better represent the result.
+
+``` r
+# Identification level 1 and 2
+il12_pie_plot <- soft_classify_feat %>%
+  filter(IL == "Level 1" | IL == "Level 2")
+# Identification level 3
+il3_pie_plot <- soft_classify_feat %>%
+  filter(IL == "Level 3")
+# 1. Coeluted compounds
+all_coeluted <- soft_classify_feat %>%
+  filter(Share_ion == "Coelute_compound") %>%
+  nrow()
+il12_coeluted <- il12_pie_plot %>%
+  filter(Share_ion == "Coelute_compound") %>%
+  nrow()
+il3_coeluted <- il3_pie_plot %>%
+  filter(Share_ion == "Coelute_compound") %>%
+  nrow()
+# 2. Discrepancies
+all_discrepancies <- soft_classify_feat %>%
+  filter(!is.na(RT_group) & Share_ion != "Coelute_compound") %>%
+  nrow()
+il12_discrepancies <- il12_pie_plot %>%
+  filter(!is.na(RT_group) & Share_ion != "Coelute_compound") %>%
+  nrow()
+il3_discrepancies <- il3_pie_plot %>%
+  filter(!is.na(RT_group) & Share_ion != "Coelute_compound") %>%
+  nrow()
+# 3. Agreement
+all_agreement <- soft_classify_feat %>%
+  filter(is.na(RT_group)) %>%
+  nrow()
+il12_agreement <- il12_pie_plot %>%
+  filter(is.na(RT_group)) %>%
+  nrow()
+il3_agreement <- il3_pie_plot %>%
+  filter(is.na(RT_group)) %>%
+  nrow()
+# Table to pie chart
+all_pie_tb <- data.frame(Category = c("Coeluted",
+                                     "Discrepancies",
+                                     "Agreement"),
+                        Count = c(all_coeluted, all_discrepancies, all_agreement))
+il12_pie_tb <- data.frame(Category = c("Coeluted",
+                                     "Discrepancies",
+                                     "Agreement"),
+                        Count = c(il12_coeluted, il12_discrepancies, il12_agreement))
+il3_pie_tb <- data.frame(Category = c("Coeluted",
+                                     "Discrepancies",
+                                     "Agreement"),
+                        Count = c(il3_coeluted, il3_discrepancies, il3_agreement))
+# Labels for pie chart
+all_pie_tb <- all_pie_tb %>%
+  mutate(Label = paste0(Category, "\n(n = ", Count, ")"))
+il12_pie_tb <- il12_pie_tb %>%
+  mutate(Label = paste0(Category, "\n(n = ", Count, ")"))
+il3_pie_tb <- il3_pie_tb %>%
+  mutate(Label = paste0(Category, "\n(n = ", Count, ")"))
+# Pie chart
+all_pie_plot <- ggplot(all_pie_tb, aes(x = "", y = Count, fill = Category)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = Label), position = position_stack(vjust = 0.5), size = 4) +
+  labs(title = "Level 1 to 3 metabolites") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, face = "plain"), legend.position = "none")
+il12_pie_plot <- ggplot(il12_pie_tb, aes(x = "", y = Count, fill = Category)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = Label), position = position_stack(vjust = 0.5), size = 4) +
+  labs(title = "Level 1 and 2 metabolites") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, face = "plain"), legend.position = "none")
+il3_pie_plot <- ggplot(il3_pie_tb, aes(x = "", y = Count, fill = Category)) +
+  geom_col(width = 1, color = "white") +
+  coord_polar(theta = "y") +
+  geom_text(aes(label = Label), position = position_stack(vjust = 0.5), size = 4) +
+  labs(title = "Level 3 metabolites") +
+  theme_void() +
+  theme(plot.title = element_text(hjust = 0.5, face = "plain"), legend.position = "none")
+all_pie_plot + il12_pie_plot + il3_pie_plot
+```
+
+![](Consensus_IDs_Apolar_column_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+In the following code, we export the final list of consensus metabolite
+identification.
+
+``` r
+# Export result
+write_xlsx(soft_classify_feat,
+           "../X_hylaeae_metabolomics/Result/NIST_MS_Search_apolar/Consensus_IDs_apolar.xlsx")
+```

@@ -1,5 +1,5 @@
 ---
-title: "Procedures to integrate the identified metabolites using deconvoluted data in four algorithms (MZmine, MS-DIAL, eRah, and MSHub) and against libraries' spectra of NIST 20 (**mainlib** and **replib**) using NIS MS Search software - Rtx-5 Semi-standard non-polar colum - SH-Rtx-Wax Polar colum"
+title: "Procedures to integrate the identified metabolites using deconvoluted data in four algorithms (MZmine, MS-DIAL, eRah, and MSHub) and against libraries' spectra of NIST 20 (*mainlib* and *replib*) using NIS MS Search software - SH-Rtx-Wax Polar colum"
 author: "Jefferson Pastuna"
 date: "`r Sys.Date()`"
 output:
@@ -19,7 +19,7 @@ usethis::git_vaccinate()
 
 Loading the necessary libraries.
 
-```{r }
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 
 library(readxl)
 library(dplyr)
@@ -28,6 +28,7 @@ library(purrr)
 library(ggplot2)
 library(ComplexHeatmap)
 library(patchwork)
+library(writexl)
 
 ```
 
@@ -623,7 +624,7 @@ all_upset + il12_upset + il3_upset
 
 ```
 
-### Coeluted compounds
+### Plot discrepancies
 
 To report (b) metabolites selected as the best but with identification discrepancies between deconvolution software, we define the meaning of discrepancies; discrepancies between software will be considered when features with a short retention time (e.g., 0.04 min) and spectral similarity (at least one ion match within the group) are annotated with different metabolite names. In the following code, we plot the mass spectrum of the features in each group, which helps us visually inspect the results of the code filtering.
 
