@@ -122,7 +122,9 @@ Loading the feature table with experimental RI.
 
 # Loading the feature list table with experimental RI
 file_rhriwx <- "../X_hylaeae_metabolomics/Result/erah_GCMS_polar_feat_list_with_RI.xlsx"
-rh_wx_ri <- read_excel(file_rhriwx, sheet = 1)
+rh_wx_ri <- read_excel(file_rhriwx, sheet = 1,
+                       col_types = c("guess", "guess", "guess", "guess", "guess",
+                                     "guess", "text"))
 # Extracting only the experimental IR
 rh_wx_ri <- data.frame(Feature_ID = rh_wx_ri$Feature_ID, Segment = rh_wx_ri$Segment,
                        Alignment_ID = rh_wx_ri$Alignment_ID, Exp_RI = rh_wx_ri$R_RI,
@@ -142,8 +144,6 @@ rh_wx_eri <- rh_wx_ids %>%
   left_join(rh_wx_ri, by = c("Segment", "Alignment_ID"))
 
 ```
-
-
 
 Adding the NIST metadata (InChIKey, Synonyms, and Polar RI) of identified metabolites.
 
@@ -348,7 +348,7 @@ rh_wx_libmz <- rh_wx_il123 %>%
   mutate(DB_ID = as.character(DB_ID)) %>%
   left_join(nist_mz %>%
               mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, nist_mz),
+              select(DB_ID, Library, nist_mz, nist_intensity),
             by = c("DB_ID", "Library"))
 
 ```
@@ -499,11 +499,13 @@ rh_wx_ions_cf <- rh_wx_ions_si %>%
 # Exporting the feature list with metabolites identified al IL 1, 2, and 3
 rh_wx_ions_cf %>%
   select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
-         Formula, MatchFactor, matched_ions, Lit_RI, Exp_RI, RI_Error, Library,
+         Formula, MatchFactor, matched_ions, RI_StdPolar, Exp_RI, RI_Error, Library,
          DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
-         nist_mz, exp_mz_ns) %>%
+         nist_mz, nist_intensity, exp_mz_ns, exp_int_ns) %>%
   mutate(nist_mz = sapply(nist_mz, paste, collapse = ", "),
-         exp_mz_ns = sapply(exp_mz_ns, paste, collapse = ", ")) %>%
+         nist_intensity = sapply(nist_intensity, paste, collapse = ", "),
+         exp_mz_ns = sapply(exp_mz_ns, paste, collapse = ", "),
+         exp_int_ns = sapply(exp_int_ns, paste, collapse = ", ")) %>%
   write_xlsx("../X_hylaeae_metabolomics/Result/eRah_GCMS_polar_IDs.xlsx")
 
 ```

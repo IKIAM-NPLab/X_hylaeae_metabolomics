@@ -345,7 +345,7 @@ md_wx_libmz <- md_wx_il123 %>%
   mutate(DB_ID = as.character(DB_ID)) %>%
   left_join(nist_mz %>%
               mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, nist_mz),
+              select(DB_ID, Library, nist_mz, nist_intensity),
             by = c("DB_ID", "Library"))
 
 ```
@@ -449,7 +449,7 @@ Extracting InChIKey for classification of type of molecule using a Classyfire to
 ```{r }
 
 # Extractiong the InChIKey from the feature file
-md_ions_ik <- md_ions_si %>%
+md_wx_ions_ik <- md_wx_ions_si %>%
   group_by(InChIKey) %>%
   filter(any(is.na(Match_flag) | Match_flag == "")) %>%
   ungroup() %>%
@@ -497,7 +497,12 @@ md_wx_ions_cf <- md_wx_ions_si %>%
 md_wx_ions_cf %>%
   select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
          Formula, MatchFactor, matched_ions, RI_StdPolar, Exp_RI, RI_Error, Library,
-         DB_ID, InChIKey, Superclass, Class, Subclass,Match_flag, RI_tag) %>%
+         DB_ID, InChIKey, Superclass, Class, Subclass,Match_flag, RI_tag,
+         nist_mz, nist_intensity, exp_mz_ns, exp_int_ns) %>%
+  mutate(nist_mz = sapply(nist_mz, paste, collapse = ", "),
+         nist_intensity = sapply(nist_intensity, paste, collapse = ", "),
+         exp_mz_ns = sapply(exp_mz_ns, paste, collapse = ", "),
+         exp_int_ns = sapply(exp_int_ns, paste, collapse = ", ")) %>%
   write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_polar_IDs.xlsx")
 
 ```

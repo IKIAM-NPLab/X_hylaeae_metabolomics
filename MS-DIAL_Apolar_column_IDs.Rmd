@@ -17,7 +17,7 @@ usethis::git_vaccinate()
 
 ## Introduction
 
-This notebook aim show how the hits result from NIST MS Search using NIST 20 library was filtered in order tu report metabolites with the best match and small RI shift.
+This notebook aim show how the hits result from NIST MS Search using NIST 20 library was filtered in order to report metabolites with the best match and small RI shift.
 
 ### MS-DIAL
 
@@ -147,16 +147,32 @@ md_eri <- md_ids %>%
 
 ```
 
+Adding the NIST metadata (InChIKey, Synonyms, and Polar RI) of identified metabolites.
+
+```{r }
+
+# Load the NIST database (metadata information of library)
+nist_db <- readRDS("F:/NIST_20_Library/Result/nist_db.rds")
+# Adding aditional information to the identified metabolites
+md_ik <- md_eri %>%
+  mutate(DB_ID = as.character(DB_ID)) %>%
+  left_join(nist_db %>%
+              mutate(DB_ID = as.character(DB_ID)) %>%
+              select(DB_ID, Library, InChIKey, Synon1, Synon2, Synon3),
+            by = c("DB_ID", "Library"))
+
+```
+
 Ading a column with a diference between literature RI and experimental RI.
 
 ```{r }
 
 # Adding RI error
-md_error <- md_eri %>%
+md_error <- md_ik %>%
   mutate(RI_Error = ifelse(
     Lit_RI == 0 | is.na(Lit_RI) | is.na(Exp_RI), NA, round(abs(Lit_RI - Exp_RI))))
 # Moving columns
-md_error <- md_error[,c(15, 1:14, 16, 18, 17)]
+md_error <- md_error[,c(15, 1:14, 16, 22, 17, 18:21)]
 
 ```
 
@@ -324,153 +340,10 @@ md_il123 <- md_rep %>%
 
 ```
 
-Now we will use the NIST data base (mainlib and replib) to found a InChIKey, and short name to add to the identified table.
-
-```{r }
-
-# Función para parsear un archivo NIST *.txt
-parse_nist_txt <- function(file_path) {
-  lines <- readLines(file_path, warn = FALSE)
-  # Separar por compuestos
-  blocks <- split(lines, cumsum(grepl("^Name:", lines)))
-  parse_block <- function(block) {
-    block_txt <- paste(block, collapse = "\n")
-    # Campos principales
-    name <- str_match(block_txt, "Name:\\s*(.*)")[,2]
-    inchikey <- str_match(block_txt, "InChIKey:\\s*(.*)")[,2]
-    # Synon (hasta 3)
-    synon_all <- str_match_all(block_txt, "Synon:\\s*(.*)")[[1]][,2]
-    synon1 <- if(length(synon_all) >= 1) synon_all[1] else NA
-    synon2 <- if(length(synon_all) >= 2) synon_all[2] else NA
-    synon3 <- if(length(synon_all) >= 3) synon_all[3] else NA
-    # CAS y Related CAS
-    cas <- str_match(block_txt, "CAS#:\\s*([^;\\n]+)")[,2]
-    related_cas <- str_match(block_txt, "Related_CAS#:\\s*([^;\\n]+)")[,2]
-    # NIST ID
-    nist_id <- str_match(block_txt, "NIST#:\\s*(\\d+)")[,2]
-    # DB#
-    db_id <- str_match(block_txt, "DB#:\\s*(\\d+)")[,2]
-    # Retention Index
-    ri_line <- str_match(block_txt, "Retention_index:\\s*(.*)")[,2]
-    ri_semi <- NA
-    ri_stdnp <- NA
-    ri_polar <- NA
-    if(!is.na(ri_line)) {
-      parts <- str_split(ri_line, "\\s+")[[1]]
-      for(p in parts) {
-        # SemiStdNP
-        if(str_detect(p, "SemiStdNP=")) {
-          val <- str_match(p, "SemiStdNP=(\\d+)")[,2]
-          if(is.na(val)) val <- str_match(p, "SemiStdNP=(\\d+)/")[,2]
-          ri_semi <- as.numeric(val)}
-        # StdNP
-        if(str_detect(p, "StdNP=")) {
-          val <- str_match(p, "StdNP=(\\d+)")[,2]
-          if(is.na(val)) val <- str_match(p, "StdNP=(\\d+)/")[,2]
-          ri_stdnp <- as.numeric(val)}
-        # StdPolar
-        if(str_detect(p, "StdPolar=")) {
-          val <- str_match(p, "StdPolar=(\\d+)")[,2]
-          if(is.na(val)) val <- str_match(p, "StdPolar=(\\d+)/")[,2]
-          ri_polar <- as.numeric(val)
-        }
-      }
-    }
-    tibble(
-      Name = name,
-      Synon1 = synon1,
-      Synon2 = synon2,
-      Synon3 = synon3,
-      InChIKey = inchikey,
-      CAS = cas,
-      Related_CAS = related_cas,
-      NIST_ID = nist_id,
-      DB_ID = db_id,
-      RI_SemiStdNP = ri_semi,
-      RI_StdNP = ri_stdnp,
-      RI_StdPolar = ri_polar
-    )
-  }
-  map_dfr(blocks, parse_block)
-}
-# Cargar bibliotecas
-mainlib <- parse_nist_txt("F:/NIST_20_Library/Data/mainlib.txt")
-replib  <- parse_nist_txt("F:/NIST_20_Library/Data/replib.txt")
-ikiamlib  <- parse_nist_txt("F:/NIST_20_Library/Data/ikiamlib.txt")
-# Unir
-nist_db <- bind_rows(
-  mainlib %>% mutate(Library = "mainlib"),
-  replib  %>% mutate(Library = "replib"),
-  ikiamlib %>% mutate(Library = "ikiam_npl_gcms_lib"))
-# Ensuring a unic compound in the data base
-nist_clean <- nist_db %>%
-  distinct(DB_ID, Library, .keep_all = TRUE)
-# Saving the processed database
-saveRDS(nist_clean, "../X_hylaeae_metabolomics/Result/nist_db.rds")
-# Load the NIST database (metadata information of library)
-nist_clean <- readRDS("F:/NIST_20_Library/Result/nist_db.rds")
-
-```
-
-Using a NIST 20 library the InChIKey was added to the identified table, the data base ID and library of identified metabolites was used to found the correct InChIKey.
-
-```{r }
-
-md_ik <- md_il123 %>%
-  mutate(DB_ID = as.character(DB_ID)) %>%
-  left_join(nist_clean %>%
-              mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, InChIKey, Synon1, Synon2, Synon3),
-            by = c("DB_ID", "Library"))
-
-```
-
 Extraction NIST 20 library mass spectrum.
 
 ```{r }
 
-parse_nist_mz <- function(file_path) {
-  lines <- readLines(file_path, warn = FALSE)
-  blocks <- split(lines, cumsum(grepl("^Name:", lines)))
-  blocks <- blocks[lengths(blocks) > 1]
-  parse_block <- function(block) {
-    txt <- paste(block, collapse = "\n")
-    # DB_ID
-    db_id <- str_match(txt, "DB#:\\s*(\\d+)")[,2]
-    # Num Peaks
-    num_peaks <- str_match(txt, "Num Peaks:\\s*(\\d+)")[,2]
-    # Extraer espectro
-    peaks_lines <- block[grepl("^\\d+\\s", block)]
-    if(length(peaks_lines) == 0) return(NULL)
-    peaks_txt <- paste(peaks_lines, collapse = " ")
-    # separar pares mz intensidad
-    pairs <- unlist(str_split(peaks_txt, ";"))
-    pairs <- trimws(pairs)
-    pairs <- pairs[pairs != ""]
-    mz <- as.numeric(str_extract(pairs, "^\\d+"))
-    intensity <- as.numeric(str_extract(pairs, "\\d+$"))
-    tibble(
-      DB_ID = as.character(db_id),
-      nist_mz = list(mz),
-      nist_intensity = list(intensity)
-    )
-  }
-  map_dfr(blocks, parse_block)
-}
-# Cargar bibliotecas
-mainlib_mz <- parse_nist_mz("F:/NIST_20_Library/Data/mainlib.txt")
-replib_mz  <- parse_nist_mz("F:/NIST_20_Library/Data/replib.txt")
-ikiamlib_mz  <- parse_nist_mz("F:/NIST_20_Library/Data/ikiamlib.txt")
-# Unir
-nist_mz <- bind_rows(
-  mainlib_mz %>% mutate(Library = "mainlib"),
-  replib_mz  %>% mutate(Library = "replib"),
-  ikiamlib_mz %>% mutate(Library = "ikiam_npl_gcms_lib"))
-# Ensuring a unic compound in the data base
-nist_mz <- nist_mz %>%
-  distinct(DB_ID, Library, .keep_all = TRUE)
-# Saving the processed database
-saveRDS(nist_mz, "../X_hylaeae_metabolomics/Result/nist_mz.rds")
 # Load the NIST database (spectrum information of library)
 nist_mz <- readRDS("F:/NIST_20_Library/Result/nist_mz.rds")
 
@@ -480,11 +353,11 @@ Adding espectrum data from the NIST libry to the identified metabolites.
 
 ```{r }
 
-md_libmz <- md_ik %>%
+md_libmz <- md_il123 %>%
   mutate(DB_ID = as.character(DB_ID)) %>%
   left_join(nist_mz %>%
               mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, nist_mz),
+              select(DB_ID, Library, nist_mz, nist_intensity),
             by = c("DB_ID", "Library"))
 
 ```
@@ -636,8 +509,12 @@ md_ions_cf <- md_ions_si %>%
 md_ions_cf %>%
   select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
          Formula, MatchFactor, matched_ions, Lit_RI, Exp_RI, RI_Error, Library,
-         DB_ID, InChIKey, Superclass, Class, Subclass,Match_flag, RI_tag) %>%
+         DB_ID, InChIKey, Superclass, Class, Subclass,Match_flag, RI_tag,
+         nist_mz, nist_intensity, exp_mz_ns, exp_int_ns) %>%
+  mutate(nist_mz = sapply(nist_mz, paste, collapse = ", "),
+         nist_intensity = sapply(nist_intensity, paste, collapse = ", "),
+         exp_mz_ns = sapply(exp_mz_ns, paste, collapse = ", "),
+         exp_int_ns = sapply(exp_int_ns, paste, collapse = ", ")) %>%
   write_xlsx("../X_hylaeae_metabolomics/Result/MSDIAL_GCMS_apolar_IDs.xlsx")
 
 ```
-

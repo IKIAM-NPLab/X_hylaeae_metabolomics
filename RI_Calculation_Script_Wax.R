@@ -63,13 +63,13 @@ erah3to38min_wx <- read.csv("../X_hylaeae_metabolomics/Data/eRah_GCMS_polar_feat
 erah3to38min_wx <- data.frame(Alignment_ID = erah3to38min_wx$AlignID,
                               RT = erah3to38min_wx$tmean,
                               Exp_EI = erah3to38min_wx$Spectra)
-erah3to38min_wx$RI_tag <- NA
+erah3to38min_wx$RI_tag <- NA_character_
 erah38to50min_wx <- read.csv("../X_hylaeae_metabolomics/Data/eRah_GCMS_polar_feat_list_38to50min.csv",
                              sep = ",", check.names = FALSE)
 erah38to50min_wx <- data.frame(Alignment_ID = erah38to50min_wx$AlignID,
                                RT = erah38to50min_wx$tmean,
                                Exp_EI = erah38to50min_wx$Spectra)
-erah38to50min_wx$RI_tag <- NA
+erah38to50min_wx$RI_tag <- NA_character_
 ##Merge files
 erah_rtwx <- bind_rows(
   erah3to38min_wx %>% mutate(Segment = "3-38min"),
@@ -79,24 +79,12 @@ erah_rtwx <- erah_rtwx %>%
   mutate(Feature_ID = row_number())
 ##RI calculation
 erah_riwx <- indexRtime(erah_rtwx$RT, alkane_data_wx)
-##Adding the RI to the MS-DIAL feature list
+##Adding the RI to the eRah feature list
 erah_rtwx$R_RI <- erah_riwx
 ## Moving columns
 erah_rtwx <- erah_rtwx[,c(6, 5, 1:2, 7, 3:4)]
-##Exporting the MS-DIAL feature list with RI
-write_xlsx(erah_rtwx, "../X_hylaeae_metabolomics/Result/erah_GCMS_polar_feat_list_with_RI.xlsx")
-
-
-
-
-
-
-
-
-
-
-
-
+##Exporting the eRah feature list with RI
+write_xlsx(erah_rtwx, "../X_hylaeae_metabolomics/Result/erah_GCMS_polar_feat_list_with_RI_EI.xlsx")
 
 ################################# MZmine ######################################
 ##Feature list deconvoluted with MZmine
@@ -119,122 +107,29 @@ mzmine_rtwx <- mzmine_rtwx %>%
   mutate(Feature_ID = row_number())
 ##RI calculation
 mzmine_riwx <- indexRtime(mzmine_rtwx$RT, alkane_data_wx)
-##Adding the RI to the MS-DIAL feature list
+##Adding the RI to the MZmine feature list
 mzmine_rtwx$R_RI <- mzmine_riwx
 ## Moving columns
 mzmine_rtwx <- mzmine_rtwx[,c(5, 4, 1:2, 6, 3)]
-##Exporting the MS-DIAL feature list with RI
+##Exporting the MZmine feature list with RI
 write_xlsx(mzmine_rtwx, "../X_hylaeae_metabolomics/Result/MZmine_GCMS_polar_feat_list_with_RI.xlsx")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-################################# MZmine #######################################
-##Feature list deconvoluted with MZmine (3 to 43 min dataset)
-mzmine_rt <- read_excel("../B_grandiflora_metabolomics/Data/B_gradiflora_MZmine_Feat_list_3to43min.xlsx", sheet = 1)
-##RI calculation (3 to 43 min dataset)
-mzmine_ri <- indexRtime(mzmine_rt$`row retention time`, alkane_data)
-##Adding the RI to the MZmine feature list (3 to 43 min dataset)
-mzmine_rt$RI <- mzmine_ri 
-## Moving the RI column close to the RT column (3 to 43 min dataset)
-mzmine_rt <- mzmine_rt[,c(1:2, 47, 3:46)]
-##Exporting the MZmine feature list with RI
-write_xlsx(mzmine_rt, "../B_grandiflora_metabolomics/Result/B_gradiflora_MZmine_Feat_list_3to43min_RI.xlsx")
-
-## Experimental Retention Index (RI) calculation
-##Feature list deconvoluted with MZmine (43 to 53 min dataset)
-mzmine_rt43to53 <- read_excel("../B_grandiflora_metabolomics/Data/B_gradiflora_MZmine_Feat_list_43to53min.xlsx", sheet = 1)
-##RI calculation (43 to 53 min dataset)
-mzmine_ri43to53 <- indexRtime(mzmine_rt43to53$`row retention time`, alkane_data)
-##Adding the RI to the MZmine feature list (43 to 53 min dataset)
-mzmine_rt43to53$RI <- mzmine_ri43to53 
-## Moving the RI column close to the RT column (43 to 53 min dataset)
-mzmine_rt43to53 <- mzmine_rt43to53[,c(1:3, 48, 4:47)]
-##Exporting the MZmine feature list with RI
-write_xlsx(mzmine_rt43to53, "../B_grandiflora_metabolomics/Result/B_gradiflora_MZmine_Feat_list_43to53min_RI.xlsx")
-
-## Experimental Retention Index (RI) calculation
-##Feature list deconvoluted with MZmine (53 to 58 min dataset)
-mzmine_rt53to58 <- read_excel("E:/B_grandiflora/B_grandiflora_metabolomics/Data/B_gradiflora_MZmine_Feat_list_53to58min.xlsx", sheet = 1)
-##RI calculation (53 to 58 min dataset)
-mzmine_ri53to58 <- indexRtime(mzmine_rt53to58$`row retention time`, alkane_data)
-##Adding the RI to the MZmine feature list (53 to 58 min dataset)
-mzmine_rt53to58$RI <- mzmine_ri53to58 
-## Moving the RI column close to the RT column (53 to 58 min dataset)
-mzmine_rt53to58 <- mzmine_rt53to58[,c(1:3, 48, 4:47)]
-##Exporting the MZmine feature list with RI
-write_xlsx(mzmine_rt53to58, "E:/B_grandiflora/B_grandiflora_metabolomics/Result/B_gradiflora_MZmine_Feat_list_53to58min_RI.xlsx")
-
-
-################################# eRah #########################################
-## Experimental Retention Index (RI) calculation
-##Feature list deconvoluted with eRah (3 to 43 min dataset)
-erah_rt3to43 <- read_excel("E:/B_grandiflora/B_grandiflora_metabolomics/Data/B_gradiflora_eRah_Feat_list_3to43min.xlsx", sheet = 1)
-##RI calculation (3 to 43 min dataset)
-erah_ri3to43 <- indexRtime(erah_rt3to43$tmean, alkane_data)
-##Adding the RI to the eRah feature list (3 to 43 min dataset)
-erah_rt3to43$RI <- erah_ri3to43
-## Moving the RI column close to the RT column (3 to 43 min dataset)
-erah_rt3to43 <- erah_rt3to43[,c(1:4, 41, 5:40)]
-##Exporting the eRah feature list with RI
-write_xlsx(erah_rt3to43, "E:/B_grandiflora/B_grandiflora_metabolomics/Result/B_gradiflora_eRah_Feat_list_3to43min_RI.xlsx")
-
-## Experimental Retention Index (RI) calculation
-##Feature list deconvoluted with eRah (43 to 53 min dataset)
-erah_rt43to53 <- read_excel("E:/B_grandiflora/B_grandiflora_metabolomics/Data/B_gradiflora_eRah_Feat_list_43to53.xlsx", sheet = 1)
-##RI calculation (43 to 53 min dataset)
-erah_ri43to53 <- indexRtime(erah_rt43to53$tmean, alkane_data)
-##Adding the RI to the eRah feature list (43 to 53 min dataset)
-erah_rt43to53$RI <- erah_ri43to53
-## Moving the RI column close to the RT column (43 to 53 min dataset)
-erah_rt43to53 <- erah_rt43to53[,c(1:4, 40, 5:39)]
-##Exporting the eRah feature list with RI
-write_xlsx(erah_rt43to53, "E:/B_grandiflora/B_grandiflora_metabolomics/Result/B_gradiflora_eRah_Feat_list_43to53min_RI.xlsx")
-
-## Experimental Retention Index (RI) calculation
-##Feature list deconvoluted with eRah (53 to 58 min dataset)
-erah_rt53to58 <- read_excel("E:/B_grandiflora/B_grandiflora_metabolomics/Data/B_gradiflora_eRah_Feat_list_53to58.xlsx", sheet = 1)
-##RI calculation (53 to 58 min dataset)
-erah_ri53to58 <- indexRtime(erah_rt53to58$tmean, alkane_data)
-##Adding the RI to the eRah feature list (53 to 58 min dataset)
-erah_rt53to58$RI <- erah_ri53to58
-## Moving the RI column close to the RT column (53 to 58 min dataset)
-erah_rt53to58 <- erah_rt53to58[,c(1:4, 39, 5:38)]
-##Exporting the eRah feature list with RI
-write_xlsx(erah_rt53to58, "E:/B_grandiflora/B_grandiflora_metabolomics/Result/B_gradiflora_eRah_Feat_list_53to58min_RI.xlsx")
-
-################################# MSHub ########################################
-## Experimental Retention Index (RI) calculation
-##Feature list deconvoluted with MShub
-mshub_rt <- read_excel("E:/B_grandiflora/B_grandiflora_metabolomics/Data/B_gradiflora_MSHub_Feat_list.xlsx", sheet = 1)
+################################# MSHub ######################################
+##Feature list deconvoluted with MSHub
+mshub_wx <- read.csv("../X_hylaeae_metabolomics/Data/MSHub_GCMS_polar_feat_list.csv",
+                     sep = ",", check.names = FALSE)
+mshub_wx <- data.frame(Alignment_ID = mshub_wx$`row ID`,
+                       RT = mshub_wx$`row retention time`)
+mshub_wx$RI_tag <- NA_character_
+# Adding a global ID
+mshub_rtwx <- mshub_wx %>%
+  mutate(Feature_ID = row_number())
 ##RI calculation
-mshub_ri <- indexRtime(mshub_rt$`row retention time`, alkane_data)
+mshub_riwx <- indexRtime(mshub_rtwx$RT, alkane_data_wx)
 ##Adding the RI to the MSHub feature list
-mshub_rt$RI <- mshub_ri
-## Moving the RI column close to the RT column
-mshub_rt <- mshub_rt[,c(1:4, 39, 5:38)]
-##Exporting the eRah feature list with RI
-write_xlsx(mshub_rt, "E:/B_grandiflora/B_grandiflora_metabolomics/Result/B_gradiflora_MSHub_Feat_list_RI.xlsx")
+mshub_rtwx$R_RI <- mshub_riwx
+## Moving columns
+mshub_rtwx <- mshub_rtwx[,c(4, 1:2, 5, 3)]
+##Exporting the MSHub feature list with RI
+write_xlsx(mshub_rtwx, "../X_hylaeae_metabolomics/Result/MSHub_GCMS_polar_feat_list_with_RI.xlsx")
 

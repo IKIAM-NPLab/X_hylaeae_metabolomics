@@ -1,5 +1,5 @@
 ---
-title: "Metabolite identified using NIST MS Search (NIST 20 mainlib and replib libraries) with data deconvoluted using *eRah* R package - Rtx-5 Semi-standard non-polar colum"
+title: "Metabolite identified using NIST MS Search (NIST 20 *mainlib* and *replib* libraries) with data deconvoluted using *eRah* R package - Rtx-5 Semi-standard non-polar colum"
 author: "Jefferson Pastuna"
 date: "`r Sys.Date()`"
 output:
@@ -147,16 +147,32 @@ rh_eri <- rh_ids %>%
 
 ```
 
+Adding the NIST metadata (InChIKey, Synonyms, and Polar RI) of identified metabolites.
+
+```{r }
+
+# Load the NIST database (metadata information of library)
+nist_db <- readRDS("F:/NIST_20_Library/Result/nist_db.rds")
+# Adding aditional information to the identified metabolites
+rh_ik <- rh_eri %>%
+  mutate(DB_ID = as.character(DB_ID)) %>%
+  left_join(nist_db %>%
+              mutate(DB_ID = as.character(DB_ID)) %>%
+              select(DB_ID, Library, InChIKey, Synon1, Synon2, Synon3),
+            by = c("DB_ID", "Library"))
+
+```
+
 Ading a column with a diference between literature RI and experimental RI.
 
 ```{r }
 
 # Adding RI error
-rh_error <- rh_eri %>%
+rh_error <- rh_ik %>%
   mutate(RI_Error = ifelse(
     Lit_RI == 0 | is.na(Lit_RI) | is.na(Exp_RI), NA, round(abs(Lit_RI - Exp_RI))))
 # Moving columns
-rh_error <- rh_error[,c(15, 1:14, 16, 18, 17)]
+rh_error <- rh_error[,c(15, 1:14, 16, 22, 17, 18:21)]
 
 ```
 
@@ -324,28 +340,6 @@ rh_il123 <- rh_rep %>%
 
 ```
 
-Now we will use the NIST data base (mainlib and replib) to found a InChIKey, and short name to add to the identified table.
-
-```{r }
-
-# Load the NIST database (metadata information of library)
-nist_db <- readRDS("F:/NIST_20_Library/Result/nist_db.rds")
-
-```
-
-Using a NIST 20 library the InChIKey was added to the identified table, the data base ID and library of identified metabolites was used to found the correct InChIKey.
-
-```{r }
-
-rh_ik <- rh_il123 %>%
-  mutate(DB_ID = as.character(DB_ID)) %>%
-  left_join(nist_db %>%
-              mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, InChIKey, Synon1, Synon2, Synon3),
-            by = c("DB_ID", "Library"))
-
-```
-
 Extraction NIST 20 library mass spectrum.
 
 ```{r }
@@ -359,11 +353,11 @@ Adding espectrum data from the NIST libry to the identified metabolites.
 
 ```{r }
 
-rh_libmz <- rh_ik %>%
+rh_libmz <- rh_il123 %>%
   mutate(DB_ID = as.character(DB_ID)) %>%
   left_join(nist_mz %>%
               mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, nist_mz),
+              select(DB_ID, Library, nist_mz, nist_intensity),
             by = c("DB_ID", "Library"))
 
 ```
@@ -516,9 +510,11 @@ rh_ions_cf %>%
   select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
          Formula, MatchFactor, matched_ions, Lit_RI, Exp_RI, RI_Error, Library,
          DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
-         nist_mz, exp_mz_ns) %>%
+         nist_mz, nist_intensity, exp_mz_ns, exp_int_ns) %>%
   mutate(nist_mz = sapply(nist_mz, paste, collapse = ", "),
-         exp_mz_ns = sapply(exp_mz_ns, paste, collapse = ", ")) %>%
+         nist_intensity = sapply(nist_intensity, paste, collapse = ", "),
+         exp_mz_ns = sapply(exp_mz_ns, paste, collapse = ", "),
+         exp_int_ns = sapply(exp_int_ns, paste, collapse = ", ")) %>%
   write_xlsx("../X_hylaeae_metabolomics/Result/eRah_GCMS_apolar_IDs.xlsx")
 
 ```

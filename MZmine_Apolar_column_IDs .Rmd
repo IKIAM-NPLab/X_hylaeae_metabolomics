@@ -356,7 +356,7 @@ mn_libmz <- mn_il123 %>%
   mutate(DB_ID = as.character(DB_ID)) %>%
   left_join(nist_mz %>%
               mutate(DB_ID = as.character(DB_ID)) %>%
-              select(DB_ID, Library, nist_mz),
+              select(DB_ID, Library, nist_mz, nist_intensity),
             by = c("DB_ID", "Library"))
 
 ```
@@ -550,8 +550,9 @@ mn_ions_cf %>%
   select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
          Formula, MatchFactor, matched_ions, Lit_RI, Exp_RI, RI_Error, Library,
          DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
-         nist_mz, exp_mz_ns, exp_int_ns) %>%
+         nist_mz, nist_intensity, exp_mz_ns, exp_int_ns) %>%
   mutate(nist_mz = sapply(nist_mz, paste, collapse = ", "),
+         nist_intensity = sapply(nist_intensity, paste, collapse = ", "),
          exp_mz_ns = sapply(exp_mz_ns, paste, collapse = ", "),
          exp_int_ns = sapply(exp_int_ns, paste, collapse = ", ")) %>%
   write_xlsx("../X_hylaeae_metabolomics/Result/MZmine_GCMS_apolar_IDs.xlsx")
