@@ -1,0 +1,1283 @@
+---
+title: "Title - Statistical analysis"
+author: "Jefferson Pastuña"
+date: "2025-06-24"
+output:
+  github_document:
+    toc: true
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+usethis::git_vaccinate()
+
+```
+
+# Introduction
+
+This R Script aims...
+
+# Before to start
+
+The “*notame*” package...
+
+## Loading libraries
+
+The “*notame*” package and other dependency packages were installed as a first step for the analysis.
+
+```{r echo=TRUE, message=FALSE}
+
+# Notame package installation
+#if (!requireNamespace("devtools", quietly = TRUE)) {
+#  install.packages("devtools")
+#}
+#devtools::install_github("antonvsdata/notame", ref = "v0.3.1")
+
+# Notame library call
+library(notame)
+
+# Dependency packages installation
+install_dependencies
+
+# Other important libraries
+library(dplyr)
+library(stringr)
+library(writexl)
+library(patchwork)
+library(readxl)
+library(purrr)
+
+```
+
+## Data preparation
+
+Raw mzXML files was deconvoluted and alingned using MZmine en four segment to correct line base caused by the temperature ramp as suggested in (last paper of MZmine). In the following code we load the exported MZmine feature list of each segment, and than all segment was marge.
+
+**NOTE.** The "Column" and "Ion Mode" are required for dawnstring analysis using notame R package.
+
+```{r echo=TRUE, message=FALSE}
+
+# Reading the feature list segment
+gcms_ms1_3to49 <- read.csv(
+  "../X_hylaeae_metabolomics/Data/notame/GCMS_MS1_apolar_to_notame_3to49min.csv",
+  sep = ",", check.names = FALSE)
+gcms_ms1_49to54 <- read.csv(
+  "../X_hylaeae_metabolomics/Data/notame/GCMS_MS1_apolar_to_notame_49to54min.csv",
+  sep = ",", check.names = FALSE)
+gcms_ms1_54to56 <- read.csv(
+  "../X_hylaeae_metabolomics/Data/notame/GCMS_MS1_apolar_to_notame_54to56min.csv",
+  sep = ",", check.names = FALSE)
+# Clean empty columns
+gcms_ms1_3to49 <- gcms_ms1_3to49[, names(gcms_ms1_3to49) != ""]
+gcms_ms1_49to54 <- gcms_ms1_49to54[, names(gcms_ms1_49to54) != ""]
+gcms_ms1_54to56 <- gcms_ms1_54to56[, names(gcms_ms1_54to56) != ""]
+# Merge all feature list
+gcms_ms1 <- bind_rows(
+  gcms_ms1_3to49 %>% mutate(Segment = "3-49min", Column = "Apolar",
+                            Ion_Mode = "EI"),
+  gcms_ms1_49to54 %>% mutate(Segment = "49-54min", Column = "Apolar",
+                            Ion_Mode = "EI"),
+  gcms_ms1_54to56 %>% mutate(Segment = "54-56min", Column = "Apolar",
+                            Ion_Mode = "EI"))
+# Adding a global ID
+gcms_ms1 <- gcms_ms1 %>%
+  mutate(Global_ID = row_number()) %>%
+  # Move the new columns to the beginning
+  relocate(Global_ID, Segment, Column, Ion_Mode)
+
+```
+
+The next step is to format the data according to the notame R package for downstream analysis. To make MetaboSets, the name R package works with these three parts of the data:
+
+- **exprs:** feature abundances across the samples
+- **pheno_data:** sample information
+- **feature_data:** feature information
+
+In the following codes, we extract the required data to make MetaboSets from the feature list exported from MZmine.
+
+### Feature information
+
+We extract the important information from the exported MZmine feature list related to the feature information such as, mass, retention time, and column type.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Extracting the feature information from the MZmine feature list
+gcms_ms1_fd <- data.frame(Global_ID = gcms_ms1$Global_ID,
+                          Segment = gcms_ms1$Segment,
+                          MZmine_ID = gcms_ms1$`row ID`,
+                          Mass = round(gcms_ms1$`row m/z`, 4),
+                          Nominal_mass = round(gcms_ms1$`row m/z`, 0),
+                          RT = round(gcms_ms1$`row retention time`, 3),
+                          Column = gcms_ms1$Column,
+                          Ion_Mode = gcms_ms1$Ion_Mode)
+
+```
+
+The cosensus metabolite identificarion list will be added to the deconvoluted feature all all ions without using a deconvolution software. For better grafically representation and the higth confidence level only metabolites identified at level 1 and 2 will be used.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Loading the consensus identification list
+il12_ids <- read_excel(
+  "../X_hylaeae_metabolomics/Result/All_column_IDs.xlsx") %>%
+  filter(IL == "Level 1" | IL == "Level 2") %>%
+  # Change the RT column value to numeric
+  mutate(RT = as.numeric(RT))
+# Selecting the short name for the plot annotation purposes
+# Function to clean names
+clean_name <- function(x) {
+  x <- as.character(x)
+  # Replace NA-like values
+  x[x %in% c("NA", "", " ")] <- NA
+  # Remove final " #"
+  x <- str_replace(x, "\\s+#$", "")
+  # Trim spaces
+  x <- str_trim(x)
+  return(x)
+}
+# Create Short_name column
+short_ids <- il12_ids %>%
+  # Clean all synonym columns
+  mutate(across(c(Name, Synon1, Synon2, Synon3), clean_name)) %>%
+  rowwise() %>%
+  mutate(
+    # Vector of candidate names
+    candidate_names = list(
+      na.omit(c(Name, Synon1, Synon2, Synon3))),
+    # Select shortest valid name
+    Short_name = ifelse(
+      length(candidate_names) == 0,
+      NA_character_,
+      candidate_names[which.min(nchar(candidate_names))])) %>%
+  ungroup() %>%
+  select(-candidate_names)
+
+```
+
+The code below annotated the consensus identification list in the feture list of ions without spectum deconvolution, the code annoted metabolite name comparing the most intensed matched ions with NIST libraries and the retention time with a tolerance of 0.05 min. 
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Function to parse EI ions
+parse_ions <- function(x) {
+  if (is.na(x) || x == "") {
+    return(numeric(0))}
+  as.numeric(str_split(x, ",")[[1]]) %>%
+    unique()}
+# Main annotation function
+add_ids <- function(flist,
+                    ids,
+                    rt_tol = 0.05) {
+  # Prepare identification list
+  il_df <- ids %>%
+    mutate(ion_list = map(top5_match_mz, parse_ions),
+           Annotated_y_n = "No")
+  # Prepare GCMS feature list
+  gcms_df <- flist %>%
+    mutate(row_id_tmp = row_number())
+  # Store annotations
+  matched_rows <- vector("list", nrow(gcms_df))
+  # Main loop
+  for (i in seq_len(nrow(gcms_df))) {
+    mass_i <- gcms_df$Nominal_mass[i]
+    rt_i   <- gcms_df$RT[i]
+    col_i  <- gcms_df$Column[i]
+    # Find candidates
+    candidates <- il_df %>%
+      mutate(mass_match = map_lgl(ion_list, ~ any(mass_i %in% .x)),
+             rt_match = abs(RT - rt_i) <= rt_tol,
+             column_match = Column_type == col_i) %>%
+      filter(mass_match,
+             rt_match,
+             column_match)
+    # If matches exist
+    if (nrow(candidates) > 0) {
+      # Prefer closest RT
+      best_match <- candidates %>%
+        mutate(rt_diff = abs(RT - rt_i)) %>%
+        arrange(rt_diff) %>%
+        slice(1)
+      # Copy the identification list metadata to the feature list data set row
+      matched_rows[[i]] <- bind_cols(gcms_df[i, ],
+                                     best_match %>%
+                                       select(top5_match_mz,
+                                              IL,
+                                              Short_name,
+                                              Superclass,
+                                              Class,
+                                              Subclass))
+      # Mark metabolite as annotated
+      il_df$Annotated_y_n[
+        which(il_df$Short_name == best_match$Short_name &
+                il_df$RT == best_match$RT)] <- "yes"
+    } else {
+      matched_rows[[i]] <- gcms_df[i, ]
+    }
+  }
+  # Final annotated GCMS table
+  flist_ids <- bind_rows(matched_rows) %>%
+    select(-row_id_tmp) %>% 
+  relocate(Column, Ion_Mode, .after = last_col())
+  # Return results
+  return(list(flist_ids = flist_ids,
+              flag_ids = il_df %>%
+                select(-ion_list)))
+}
+
+# Adding the consensus identification list to the feature list
+gcms_ms1_fd_ids <- add_ids(flist = gcms_ms1_fd, ids = short_ids, rt_tol = 0.05)
+
+```
+
+In the last code, we added the consensus identification list to the feature list. The result contains two data sets: one with the feature list and the annotated metabolites, and the second with the consensus identification list, including a tag indicating whether each item was annotated. In the following code, we extract the consensus identification list with a flag indicating whether each metabolite was annotated in the feature list. We can inspect whether any metabolite was not identified in R, or we can export the file for further inspection.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Extracting the consensus identification list with the annotation flag
+tag_ids <- gcms_ms1_fd_ids$flag_ids
+# Exporting for the annotation inspection
+#write_xlsx(XXXX, "../X_hylaeae_metabolomics/Result/All_column_IDs_flag.xlsx",
+#           col_names = FALSE)
+
+```
+
+In the following code, we extract the feature list annotated with the metabolite names. This final annotated feature list will be used to construct the name MetaboSets.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Extracting feature list with metabolite annotation
+gcms_ms1_fd <- gcms_ms1_fd_ids$flist_ids
+
+```
+
+### Sample information
+
+Some sample information are in the name of the chromatogram files. In the following code we will extract the file name from the exported MZmine feature list, MZmine save the sample information after the 13th column; however we add five columns extra at the bigining of the dataset.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Extracting the file names from the MZmine export feature list
+file_name <- colnames(gcms_ms1)[18:ncol(gcms_ms1)]
+# Extracting the injection order from the file names
+inj_order <- sub("_.*", "", file_name)
+# Extracting the number of replicates from the file names
+sp_repl <- str_match(file_name, "_([^_*]*)\\.mzXML")[, 2] %>%
+  str_trim() %>% 
+  ifelse(str_detect(., "\\d"), ., NA)
+# Extracting the sample group from the file names
+sp_gp <- str_match(file_name, "^\\d+_(.*?)_?\\d*\\.mzXML")[, 2] %>%
+  str_remove_all("\\s+")
+# Sample information from the MZmine feature list
+gcms_ms1_pd <- data.frame(Injection_order = inj_order,
+                          Group = sp_gp,
+                          Visit = sp_repl,
+                          Datafile = colnames(gcms_ms1)[18:ncol(gcms_ms1)]) %>%
+  # Adding an auxiliary column to keep the original order
+  mutate(ax_id = row_number()) %>%
+  # Change the Injection_order column value to numeric
+  mutate(Injection_order = as.numeric(Injection_order)) %>%
+  # Sort globally by group and then by injection (smallest to largest)
+  arrange(Group, Injection_order) %>%
+  # Group by the "Group" column
+  group_by(Group) %>%
+  # If 'Visit' is NA, assign the sequence number within the ordered group
+  mutate(Visit = ifelse(is.na(Visit), as.character(row_number()), Visit)) %>%
+  # Keep the original sequence of the data
+  arrange(ax_id) %>%
+  select(-ax_id) %>%
+  # Ungroup at the end of the process
+  ungroup()
+
+```
+
+### Feature abundance
+
+Also the feature abundance of each sample was extracted from the exported MZmine feature list.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Extracting feature abundance 
+gcms_ms1_xp <- gcms_ms1[, -c(2:17)]
+# Change the name of the Global_ID column to ensure the correct merge of data
+colnames(gcms_ms1_xp)[colnames(gcms_ms1_xp) == "Global_ID"] <- "Global_ID_xp"
+
+```
+
+### Export file
+
+The notame package uses a defined data format as input; in the following code, we assemble the specific format required by the notame R package.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Joining the fdata and xprs
+bottom <- cbind(gcms_ms1_fd, gcms_ms1_xp)
+# Ensuring that the fdata and xprs data were merged correctly
+all(bottom$Global_ID == bottom$Global_ID_xp)
+# Once the correct merge of the data is complete, the auxiliary column will be deleted
+bottom$Global_ID_xp <- NULL
+# Adding the column name
+bottom <- bottom %>% dplyr::mutate(across(everything(), 
+    as.character)) %>% rbind(colnames(.), .)
+# Extracting the column name of the column that has file names
+datafile_cols <- colnames(gcms_ms1_pd)[grepl("Datafile", colnames(gcms_ms1_pd))]
+# Preparing sample information according to the notame R package format
+top <- cbind(matrix(colnames(gcms_ms1_pd), ncol = 1), t(gcms_ms1_pd))
+# Adding an empty matrix (size of fData) at the beginning of the pData
+empty1 <- matrix(NA_character_, nrow = nrow(top), ncol = ncol(gcms_ms1_fd) - 1)
+# Stick an empty matrix (size of fData) with pData
+top <- cbind(empty1, top)
+# Adding bottom (fData + exprs) column names to the pData
+colnames(top) <- colnames(bottom)
+# Join the top (pData) and bottom (fData + exprs) datasets
+big <- rbind(top[seq_len(nrow(top) - 1), ], bottom)
+# Find position of "Injection_order"
+start_col <- which(big [1, ] == "Injection_order") + 1
+# Convert columns from Injection_order onward as numeric
+big[1, start_col:ncol(big)] <- lapply(
+  big[1, start_col:ncol(big)],
+  function(x) as.numeric(as.character(x)))
+# Export file
+write_xlsx(big, "../X_hylaeae_metabolomics/Data/notame/GCMS_MS1_apolar_all.xlsx",
+           col_names = FALSE)
+
+```
+
+# Notame workflow
+
+Then, a primary path and a log system were added to have a record of each process executed.
+
+```{r echo=TRUE, message=TRUE, warning=FALSE, error=FALSE}
+
+# Main path
+ppath <- "../X_hylaeae_metabolomics/"
+# Log system
+init_log(log_file = paste0(ppath, "Result/notame/GCMS_MS1_log.txt"))
+
+```
+
+Next, the MZmine feature list table in “*notame*” format was loaded.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+data <- read_from_excel("../X_hylaeae_metabolomics/Data/notame/GCMS_MS1_apolar_all.xlsx",
+                        corner_row = 4, corner_column = "H",
+                        rt_limits = c(0, 57), split_by = c("Column", "Ion_Mode"))
+
+```
+
+
+Once the data was loaded, the next step was to create a MetaboSet to work with R objects from now on.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+modes <- construct_metabosets(exprs = data$exprs, 
+                              pheno_data = data$pheno_data, 
+                              feature_data = data$feature_data,
+                              group_col = "Group")
+
+```
+
+## Preprocessing
+
+The first step of the preprocessing is to change the features with a value equal to 0 to NA.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Data extraction
+mode <- modes$`Rtx-5_EI`
+# Change 0 value to NA
+mode <- mark_nas(mode, value = 0)
+
+
+
+
+
+# Boxplot
+raw_bp <- plot_sample_boxplots(mode,
+                               order_by = "QC",
+                               fill_by = "QC")
+# PCA
+raw_pca <- plot_pca(mode,
+                    center = TRUE,
+                    shape = "QC",
+                    color = "QC")
+# Plot
+raw_pca + raw_bp
+
+```
+
+Then, features with low detection rates are flagged and can be ignored or removed in subsequent analysis. The “*notame*” package uses two criteria to flag these features: the feature's presence in a percentage of QC injections and the feature's presence in a percentage within a sample group or class.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Low detection rate
+mode <- flag_detection(mode, qc_limit = 5/7, group_limit = 3/3)
+
+
+
+
+
+
+# Boxplot
+det_bp <- plot_sample_boxplots(mode,
+                               order_by = "QC",
+                               fill_by = "QC")
+# PCA
+det_pca <- plot_pca(mode,
+                    center = TRUE,
+                    shape = "QC",
+                    color = "QC")
+# Plot
+det_pca + det_bp
+
+
+```
+
+The following preprocessing step is drift correction, which is applied using smoothed cubic spline regression.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Drift correction
+corrected <- correct_drift(mode)
+#corrected <- correct_drift(corrected)
+# Flag low quality features
+corrected <- flag_quality(corrected, condition = "RSD_r < 0.3 & D_ratio_r < 0.6")
+
+```
+
+Then, we can visualize the data after drift correction.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Boxplot
+corr_bp <- plot_sample_boxplots(corrected,
+                                order_by = "QC",
+                                fill_by = "QC")
+# PCA
+corr_pca <- plot_pca(corrected,
+                     center = TRUE,
+                     shape = "QC",
+                     color = "QC")
+# Package to plots visualization in a same windows
+library(patchwork)
+# Plot
+corr_pca + corr_bp
+
+```
+
+The next step is feature clustering. This step helps us reduce the number of features of the same molecule that were split due to a 70 eV electron ionization (EI) environment.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+clustered <- cluster_features(corrected, rt_window = 1/60, corr_thresh = 0.95,
+                              d_thresh = 0.80)
+compressed <- compress_clusters(clustered)
+
+```
+
+We can inspect the data using the PCA plot after the clustering algorithm execution.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Boxplot
+clust_bp <- plot_sample_boxplots(compressed,
+                                 order_by = "QC",
+                                 fill_by = "QC")
+# PCA
+clust_pca <- plot_pca(compressed,
+                      center = TRUE,
+                      shape = "QC",
+                      color = "QC")
+# Plot
+clust_pca + clust_bp
+
+```
+
+Contaminant peaks based on the process blank will be removed.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# Removal of contaminants
+flag_blank <- flag_contaminants(compressed,
+                                blank_col = "Group",
+                                blank_label = "Ext_blank",
+                                flag_thresh = 0.05,
+                                flag_label = "Contaminant")
+# Removal blank group from dataset
+no_blank <- flag_blank[, flag_blank$Group != "Ext_blank"]
+pData(no_blank) <- droplevels(pData(no_blank))
+
+
+
+
+
+
+# Boxplot
+blank_bp <- plot_sample_boxplots(no_blank,
+                                 order_by = "QC",
+                                 fill_by = "QC")
+# PCA
+blank_pca <- plot_pca(no_blank,
+                      center = TRUE,
+                      shape = "QC",
+                      color = "QC")
+# Plot
+blank_pca + blank_bp
+
+```
+
+## Processing
+
+We used probabilistic quotient normalization (PQN) with missing value imputation and scaled using the autoscaling method for downstream statistical analysis.
+
+The code below imputes the data using a chromatographic noise value.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# Impute missing values using noise threshold
+imputed <- impute_simple(no_blank, value = 60, na_limit = 0)
+
+```
+
+We can inspect the data with the PCA plot after data imputation.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Boxplot
+imp_bp <- plot_sample_boxplots(imputed,
+                               order_by = "QC",
+                               fill_by = "QC")
+# PCA
+imp_pca <- plot_pca(imputed,
+                    center = TRUE,
+                    shape = "QC",
+                    color = "QC")
+# Plot
+imp_pca + imp_bp
+
+```
+
+After data imputation, the data were normalized by PQN.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Probabilistic quotient normalization
+pqn_set <- pqn_normalization(imputed,
+                             ref = c("qc", "all"),
+                             method = c("median", "mean"),
+                             all_features = FALSE)
+
+```
+
+We can inspect the data with the PCA plot after data normalization.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Boxplot
+pqn_bp <- plot_sample_boxplots(pqn_set,
+                               order_by = "QC",
+                               fill_by = "QC")
+# PCA
+pqn_pca <- plot_pca(pqn_set,
+                    center = TRUE,
+                    shape = "QC",
+                    color = "QC")
+# Plot
+pqn_pca + pqn_bp
+
+```
+
+
+#################### FALTA EDITAR EN ADELANTE ##################################
+
+Finally, the data is ready to be exported and proceed with the statistical analysis.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+#save(compressed, file = paste0(ppath, "Result/notame_Result/Notame_HS_GC-MS_out.RData"))
+
+```
+
+# Principal component analysis (PCA)
+
+Extracting the data and metadata of "*notame*" MetaboSet for principal component analysis (PCA) plot.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# Extract clean data
+pqn_noflag <- drop_flagged(pqn_set)
+# Extracting feature height table
+peak_height <- exprs(pqn_noflag)
+# Extracting phenotypic data
+pheno_data <- pqn_noflag@phenoData@data
+
+```
+
+Transposing the feature table and preparing the PCA data.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# Transposing feature height table
+transp_table  <- t(peak_height)
+# Centering and Scaling features
+ei_pca <- prcomp(transp_table, center = TRUE, scale. = TRUE)
+
+```
+
+## Score PCA
+
+Plotting PCA results.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide', fig.width = 7, fig.height = 4}
+
+# Library to left_join use
+library(dplyr)
+# PCA scores
+scores <- ei_pca$x %>%                   # Get PC coordinates
+  data.frame %>%                         # Convert to data frames
+  mutate(Sample_ID = rownames(.)) %>%    # Create a new column with the sample names
+  left_join(pheno_data)                  # Adding metadata
+# PCA plot
+pca_plot <- ggplot(scores,
+       aes(PC1, PC2, shape = Group, color = Group)) +
+  scale_color_manual(values=c("#F8766D",
+                              "#00BFC4",
+                              "#C77CFF",
+                              "#7CAE00")) +
+  geom_point(size = 3) +
+  geom_text(aes(label = DBH_Tag), hjust = 0.5, nudge_x = 0.90, nudge_y = -3.00,
+            check_overlap = TRUE, show.legend = FALSE) +
+  scale_shape_manual(values=c(16, 15, 3, 17)) +
+  guides(x=guide_axis(title = "PC1 (23.83 %)"),
+         y=guide_axis(title = "PC2 (18.50 %)")) +
+  labs(shape = 'DBH', color= 'DBH') +
+  theme_classic() +
+  theme(legend.text = element_text(face = "plain")) +
+  theme(legend.position = c(0.120, 0.760),
+        legend.background = element_rect(fill = "white", color = "black")) +
+  theme(panel.grid = element_blank(), 
+        panel.border = element_rect(fill= "transparent")) +
+  geom_vline(xintercept = 0, linetype = "longdash", colour="gray") +
+  geom_hline(yintercept = 0, linetype = "longdash", colour="gray")
+pca_plot
+
+```
+
+## Loading PCA
+
+Plotting a loading PCA result.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+loadings <- ei_pca$rotation %>%           # Extract loadings
+  data.frame(Feature_ID = rownames(.))    # New column with feat name
+
+```
+
+Creating an artificial table with feature names and a column with compound names (identified metabolites).
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide', fig.width = 14, fig.height = 7}
+
+# Extracting feature identified at level 2
+metab_data <- pqn_noflag[!is.na(pqn_noflag@featureData@data$Identification_level),]
+metab_data <- metab_data[metab_data@featureData@data$Identification_level == 
+                           "Identification level 2",]
+# Extracting metabolite table
+meta_table <- metab_data@featureData@data
+# Creating a new small table of the annotated compounds
+ei_compouds <- left_join(meta_table, loadings)
+# Plotting results
+load_pca <- ggplot(loadings, aes(PC1, PC2)) + 
+  geom_point(alpha = 0.3, size = 2.5) +
+  theme_classic() +
+ggrepel::geom_label_repel(data = ei_compouds,
+                            aes(label = meta_table$Metabolite),
+                            box.padding = 0.37,
+                            label.padding = 0.22,
+                            label.r = 0.30,
+                            cex = 3,
+                            max.overlaps = 50,
+                            min.segment.length = 0) +
+  guides(x=guide_axis(title = "PC1 (23.83 %)"),
+         y=guide_axis(title = "PC2 (18.50 %)")) +
+  #theme(legend.position = c(0.070, 0.090),
+  #      legend.background = element_rect(fill = "white", color = "black")) +
+  theme(panel.grid = element_blank(), 
+        panel.border = element_rect(fill= "transparent")) +
+  geom_vline(xintercept = 0, linetype = "longdash", colour="gray") +
+  geom_hline(yintercept = 0, linetype = "longdash", colour="gray")
+load_pca
+# Save plot
+# Save plot in *.pdf
+#ggsave(filename = '../Headspace_of_C_lechleri_sap/Result/notame_Result/loading_pca_1A.pdf',
+#       plot = load_pca, width = 14, height = 7, dpi = 300, scale = 0.85)
+# Save plot in *.png
+#ggsave(filename = '../Headspace_of_C_lechleri_sap/Result/notame_Result/loading_pca_1A.png',
+#       plot = load_pca, width = 14, height = 7, dpi = 300, scale = 0.85)
+# Save plot in *.jpg
+#ggsave(filename = '../Headspace_of_C_lechleri_sap/Result/notame_Result/loading_pca_1A.jpg',
+#       plot = load_pca, width = 14, height = 7, dpi = 300, scale = 0.85)
+
+```
+
+# Heatmap with HCA
+
+Only the annotated features were used in the heatmap and the hierarchical cluster analysis (HCA). The ComplexHeatmap package will be used for the heatmap and the hierarchical cluster analysis (HCA).
+
+ComplexHeatmap package and dependency installation.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# ComplexHeatmap package installation
+#if (!requireNamespace("BiocManager", quietly=TRUE))
+#    install.packages("BiocManager")
+#BiocManager::install("ComplexHeatmap")
+library(ComplexHeatmap)
+
+# ColorRamp2 package installation
+#if (!requireNamespace("devtools", quietly = TRUE)) {
+#  install.packages("devtools")
+#}
+#devtools::install_github("jokergoo/colorRamp2")
+library(colorRamp2)
+
+# Cowplot package installation
+#install.packages("cowplot")
+library(cowplot)
+
+# mdatools package installation
+#install_github('svkucheryavski/mdatools')
+library(mdatools)
+
+# ClassyFire package installation
+#remotes::install_github('aberHRML/classyfireR')
+library(classyfireR)
+
+```
+
+The metabolites were classified using the [ClassyFireR](https://doi.org/10.1186/s13321-016-0174-y) to add these metabolite classifications to the heatmap plot.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# InChI key of the metabolites you want to classify
+InChI_Keys <- c('2-Heptanone' = "KYWIYKKSMDLRDC-UHFFFAOYSA-N")
+# Get classification
+Classification_List <- purrr::map(InChI_Keys, get_classification)
+Classification_List
+
+``` 
+
+Extracting and loading of identified metabolites' abundance, and data scaling by the autoscaling method.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Drop QC
+hm_no_qc <- drop_qcs(pqn_noflag)
+# Scaling by autoscaling method
+hm_scl <- scale(t(exprs(hm_no_qc)), center = TRUE, scale = TRUE)
+hm_scl <- t(hm_scl)
+# Adding autoscaling data to notame MetaboSet
+hm_scl_set <- hm_no_qc
+exprs(hm_scl_set) <- hm_scl
+# Extracting identified metabolite data at level 2
+raw_hm <- hm_scl_set[!is.na(hm_scl_set@featureData@data$Metabolite),]
+raw_hm <- raw_hm[raw_hm@featureData@data$Identification_level == 
+                   "Identification level 2",]
+# Extracting feature height table
+hm_height <- exprs(raw_hm)
+# Extracting sample information
+hm_pdata <- raw_hm@phenoData@data
+# Extracting feature information
+hm_fdata <- raw_hm@featureData@data
+
+```
+
+Row and top heatmap annotation.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, fig.width = 10, fig.height = 9}
+
+set.seed(1540)
+# Adding row and column names
+hm_scl <- hm_height
+rownames(hm_scl) <- hm_fdata$Metabolite
+colnames(hm_scl) <- hm_pdata$DBH_Tag
+# Metabolite class color
+cols_metclass <- c("Monoterpenoids" = "#800000FF",
+                   "Fatty alcohols" = "#8DD3C7",
+                   "Miscellaneous" = "#C0C0C0",
+                   "Sesquiterpenoids" = "#FFA319FF",
+                   "Carbonyl compounds" = "#EED5B7",
+                   "Alkanes" = "#BEBADA")
+# Add row anotation to HeatMap
+hm_row_ann <- rowAnnotation(Subclass = hm_fdata$classyfireR_Subclass,
+                            col = list(Subclass = cols_metclass),
+                            show_annotation_name = TRUE,
+                            show_legend = FALSE)
+# Species color
+cols_age <- c("92-96 cm" = "#E76BF3",
+              "108-112 cm" = "#F8766D",
+              "79-86 cm" = "#7CAE00")
+# Add top anotation to Heatmap
+top_info_ann <- HeatmapAnnotation(`Plant age` = hm_pdata$Group,
+                                  col = list(`Plant age` = cols_age),
+                                  show_annotation_name = T,
+                                  show_legend = F,
+                                  border = T)
+# Color scale
+mycol <- colorRamp2(c(-4, 0, 4), c("blue", "white", "red"))
+# Heatmap matrix plotting
+hm_plot <- Heatmap(hm_scl,
+                   col = mycol,
+                   border_gp = grid::gpar(col = "black", lty = 0.02),
+                   rect_gp = grid::gpar(col = "black", lwd = 0.75),
+                   clustering_distance_columns = "euclidean",
+                   clustering_method_columns = "complete",
+                   top_annotation = top_info_ann,
+                   row_names_max_width = unit(10, "cm"),
+                   right_annotation = hm_row_ann,
+                   show_heatmap_legend = F,
+                   row_km = 3, column_km = 3,
+                   row_title = c("a", "b", "c"))
+
+hm_plot
+
+```
+
+Adding legends to the heatmap.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Color scale legend
+lgd1 <- Legend(col_fun = mycol,
+               title = "Autoscaled abundance",
+               direction = "horizontal" )
+# Bees species legend
+lgd2 <- Legend(labels = gt_render(c("92-96 cm",
+                                    "108-112 cm",
+                                    "79-86 cm")),
+               legend_gp = gpar(fill = cols_age),
+               title = "DBH", ncol = 1)
+# Metabolite class Legend
+lgd3 <- Legend(labels = c(unique(hm_fdata$classyfireR_Subclass)) ,
+               legend_gp = gpar(fill = cols_metclass), 
+               title = "Metabolite Subclass", ncol = 2)
+
+```
+
+Plotting the heatmap.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, fig.width = 10, fig.height = 12}
+
+set.seed(1540)
+# Converting to ggplot
+gg_heatmap <- grid.grabExpr(draw(hm_plot))
+gg_heatmap <- ggpubr::as_ggplot(gg_heatmap)
+# Legends
+all_legends <- packLegend(lgd1, lgd2, lgd3, direction = "horizontal")
+gg_legend <- grid.grabExpr(draw(all_legends))
+gg_legend_fn <- ggpubr::as_ggplot(gg_legend)
+# Heatmap plot
+gcms_hm <- plot_grid(gg_legend_fn,
+                     gg_heatmap, ncol = 1,
+                     rel_heights = c(0.055, 0.880))
+gcms_hm
+
+```
+
+# Antioxidant activity correlation
+
+Correlation between feature abundance and antioxidant result (TAC, total antioxidant content) using the PCA and Pearson's correlation approaches.
+
+## Using the PCA
+
+Preparation of data and metadata, merging antioxidant activity data with abundance of features.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE} 
+
+# Antioxidant activity data extraction
+Antioxidant_data <- drop_qcs(modes$na_na)
+Antioxidant_data <- t(exprs(Antioxidant_data))
+# Drop QCs of metabolomics data
+no_qc <- drop_qcs(pqn_noflag)
+# Extracting feature height table
+corr_peak <- t(exprs(no_qc))
+# Merge the antioxidant activity result with the feature list table
+Antioxidant_peak <- cbind(Antioxidant_data, corr_peak)
+# Extracting phenotypic data of metabolomics data
+corr_pdata <- no_qc@phenoData@data
+
+```
+
+### Score PCA
+
+PCA scores calculation of the antioxidant and feature abundance merged data.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Centering and Scaling features
+corr_pca <- prcomp(Antioxidant_peak, center = TRUE, scale. = TRUE)
+
+```
+
+Plotting PCA score.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide', fig.width = 7, fig.height = 4}
+
+# PCA scores
+corr_scores <- corr_pca$x %>%            # Get PC coordinates
+  data.frame %>%                         # Convert to data frames
+  mutate(Sample_ID = rownames(.)) %>%    # Create a new column with the sample names
+  left_join(corr_pdata)                  # Adding metadata
+# PCA plot
+corr_pca_plot <- ggplot(corr_scores,
+                        aes(PC1, PC2, shape = Group, color = Group)) +
+  scale_color_manual(values=c("#F8766D",
+                              "#00BFC4",
+                              "#C77CFF")) +
+  scale_shape_manual(values=c(16, 15, 3)) +
+  geom_point(size = 3) +
+  geom_text(aes(label = DBH_Tag), hjust = 0.5, nudge_x = 0.90, nudge_y = -3.00,
+            check_overlap = TRUE, show.legend = FALSE) +
+  guides(x=guide_axis(title = "PC1 (27.01 %)"),
+         y=guide_axis(title = "PC2 (21.27 %)")) +
+  labs(shape = 'DBH', color= 'DBH') +
+  theme_classic() +
+  #theme(legend.text = element_text(face="italic")) +
+  theme(legend.position = c(0.120, 0.795),
+        legend.background = element_rect(fill = "white", color = "black")) +
+  theme(panel.grid = element_blank(), 
+        panel.border = element_rect(fill= "transparent")) +
+  geom_vline(xintercept = 0, linetype = "longdash", colour="gray") +
+  geom_hline(yintercept = 0, linetype = "longdash", colour="gray")
+corr_pca_plot
+
+```
+
+### Loading PCA
+
+Plotting loading results.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+corr_loadings <- corr_pca$rotation %>%    # Extract loadings
+  data.frame(Feature_ID = rownames(.))    # New column with feat name
+
+```
+
+Creating an artificial table with feature names and a column with compound names (identified metabolites).
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide', fig.width = 14, fig.height = 7}
+
+# Extracting the Antioxidant metadata
+Antioxidant_table <- drop_qcs(modes$na_na)@featureData@data
+Antioxidant_table$Flag  <- as.character(Antioxidant_table$Flag)
+# Merge the Antioxidant metadata with the metabolite table
+corr_table <- merge(meta_table, Antioxidant_table, all = TRUE)
+# Creating a new small table of the annotated compounds and antimicrobial metadata
+corr_compouds <- left_join(corr_table, corr_loadings)
+# Plotting results
+corr_load_plot <- ggplot(corr_loadings, aes(PC1, PC2)) + 
+  geom_point(alpha = 0.3, size = 2) +
+  theme_classic() +
+  geom_point(data = corr_compouds, aes(shape = corr_table$Identification_level,
+                                       color = corr_table$Identification_level), size = 2) +
+  labs(shape = 'Legend of features',
+       color = 'Legend of features') +
+  scale_color_manual(values = c("red",
+                                "darkblue")) +
+  scale_shape_manual(values = c(17, 19)) +
+  ggrepel::geom_label_repel(data = corr_compouds,
+                            aes(label = corr_table$Metabolite_name),
+                            box.padding = 0.37,
+                            label.padding = 0.22,
+                            label.r = 0.30,
+                            cex = 2.5,
+                            max.overlaps = 50,
+                            min.segment.length = 0) +
+  guides(x=guide_axis(title = "PC1 (27.01 %)"),
+         y=guide_axis(title = "PC2 (21.27 %)")) +
+  theme(legend.position = c(0.075, 0.890),
+        legend.background = element_rect(fill = "white", color = "black")) +
+  theme(panel.grid = element_blank(), 
+        panel.border = element_rect(fill= "transparent")) +
+  geom_vline(xintercept = 0, linetype = "longdash", colour="gray") +
+  geom_hline(yintercept = 0, linetype = "longdash", colour="gray")
+  #ggsci::scale_color_aaas()
+corr_load_plot
+
+```
+
+## Using the Pearson correlation
+
+The Pearson correlation between Antioxidant activity and feature abundance was performed.
+
+### Normality of the Antioxidant data
+
+First, the Antioxidant data normality was evaluated using the Shapiro-Wilk test.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Loading the "readxl" package
+library(readxl)
+# Loading the Antioxidant activity data
+all_Antioxidant <- read_excel("../Headspace_of_C_lechleri_sap/Data/C_lechleri_sap_Antioxidant.xlsx",
+                              sheet = 2)
+# Deleting the group column to perform Shapiro-Wilk test in batch
+no_group <- all_Antioxidant[,-1]
+# Perform the Shapiro-Wilk test
+shapiro <- do.call(rbind, lapply(no_group,
+                                 function(x) shapiro.test(x)[c("statistic", "p.value")]))
+shapiro
+
+```
+
+The result showed that only the antioxidant activities ABTS and DPPH have a normal distribution (p-value > 0.05).
+
+### Metabolomics data transformation
+
+Before the Pearson correlation of feature abundance with the Antioxidant activity (Total antioxidant content), the previously normalized data by PQN was transformed using the generalised logarithm (glog) method.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# "SummarizedExperiment" package installation
+#if (!require("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+#BiocManager::install("SummarizedExperiment")
+library(SummarizedExperiment)
+# Convert feature height table to SummarizedExperiment class
+pmp_data <- SummarizedExperiment(assays = exprs(pqn_noflag),
+                                 colData = pqn_noflag@phenoData@data)
+# Package for generalized logarithmic transform
+#if (!requireNamespace("BiocManager", quietly = TRUE))
+#    install.packages("BiocManager")
+#BiocManager::install("pmp")
+library(pmp)
+# Generalised logarithmic transform
+glog_exprs <- glog_transformation(df = pmp_data@assays@data@listData[[1]],
+                                  classes = pmp_data$QC,
+                                  qc_label = "QC")
+# Adding glog transformation to notame MetaboSet
+glog_set <- pqn_noflag
+exprs(glog_set) <- glog_exprs
+
+```
+
+Preparing the metabolomics data for the Antioxidant correlation.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Drop QCs
+glog_no_qc <- drop_qcs(glog_set)
+# Convert Antioxidant result to numeric
+glog_no_qc$ABTS <- as.numeric(glog_no_qc$ABTS)
+glog_no_qc$DPPH <- as.numeric(glog_no_qc$DPPH)
+glog_no_qc$DBH_split10 <- as.numeric(glog_no_qc$DBH_split10)
+
+```
+
+Perform the Pearson correlation analysis.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Feature correlation with ABTS antioxidant activity
+ABTS_corr <- perform_correlation_tests(glog_no_qc, x = featureNames(glog_no_qc),
+                                       y = c("ABTS"), method = "pearson")
+
+# Feature correlation with DPPH antioxidant activity
+DPPH_corr <- perform_correlation_tests(glog_no_qc, x = featureNames(glog_no_qc),
+                                       y = c("DPPH"), method = "pearson")
+
+# Feature correlation with DBH
+DBH_corr <- perform_correlation_tests(glog_no_qc, x = featureNames(glog_no_qc),
+                                       y = c("DBH_split10"), method = "pearson")
+
+```
+
+### Correlation of identified metabolites
+
+Create a matrix for the heatplot of Pearson's correlation.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# Correlation table for the heatmap
+hm_corr_table <- data.frame(Feature_ID = ABTS_corr$X,
+                            ABTS = ABTS_corr$Correlation_coefficient,
+                            DPPH = DPPH_corr$Correlation_coefficient,
+                            DBH = DBH_corr$Correlation_coefficient)
+# Feature data table
+feat_corr_table <- data.frame(Feature_ID = hm_fdata$Feature_ID,
+                             Metabolite = hm_fdata$Metabolite)
+# Adding the metabolie name to the correlation table
+hm_corr_table <- left_join(hm_corr_table, feat_corr_table)
+# Extracting data of the identified metabolites
+hm_corr_table <- hm_corr_table[!is.na(hm_corr_table$Metabolite),]
+# Adding row name
+rownames(hm_corr_table) <- hm_corr_table$Metabolite
+# Delete extra information
+hm_corr_table <- subset(hm_corr_table, select = -c(Feature_ID, Metabolite))
+# Converting DataFrame to data matrix
+hm_corr_table <- data.matrix(hm_corr_table, rownames.force = NA)
+# Adding column name
+colnames(hm_corr_table) <- c("ABTS", "DPPH", "DBH")
+
+```
+
+Create a matrix showing the statistical significance of the correlation result.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# Correlation table for the heatmap
+hm_sign_table <- data.frame(Feature_ID = ABTS_corr$X,
+                            ABTS = ABTS_corr$Correlation_P,
+                            DPPH = DPPH_corr$Correlation_P,
+                            DBH = DBH_corr$Correlation_P)
+# Adding the metabolie name to the significance table
+hm_sign_table <- left_join(hm_sign_table, feat_corr_table)
+# Extracting data of the identified metabolites
+hm_sign_table <- hm_sign_table[!is.na(hm_sign_table$Metabolite),]
+# Adding row name
+rownames(hm_sign_table) <- hm_sign_table$Metabolite
+# Delete extra information
+hm_sign_table <- subset(hm_sign_table, select = -c(Feature_ID, Metabolite))
+# Converting DataFrame to data matrix
+hm_sign_table <- data.matrix(hm_sign_table, rownames.force = NA)
+# Adding column name
+colnames(hm_sign_table) <- c("ABTS", "DPPH", "DBH")
+
+```
+
+Plot the correlation heatplot.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, fig.width = 5, fig.height = 9}
+
+# Add top anotation to Heatmap
+ann_corr <- HeatmapAnnotation(
+  foo = anno_block(gp = gpar(fill = 0, col = "white"),
+                   labels = "Pearson\n correlation",
+                   labels_gp = gpar(col = "black", fontsize = 12, fontface = "bold")))
+# Color scale
+col_fun <- colorRamp2(c(-1, 0, 1), c("blue", "white", "red"))
+# Heatmap plot
+hm_corr <- Heatmap(hm_corr_table, col = col_fun, cluster_rows = FALSE,
+                   cluster_columns = FALSE,
+                   right_annotation = hm_row_ann,
+                   border_gp = grid::gpar(col = "black", lty = 0.02),
+                   rect_gp = grid::gpar(col = "black", lwd = 0.75),
+                   top_annotation = ann_corr,
+                   cell_fun = function(j, i, x, y, w, h, fill) {
+                     if(hm_sign_table[i, j] < 0.05) {
+                       grid.text(sprintf("%.1f", hm_corr_table[i, j]), x, y,
+                                 gp = gpar(fontsize = 9, fontface = "bold"))
+                       } else if(hm_sign_table[i, j] > 0.05) {
+                         grid.text(sprintf("%.1f", hm_corr_table[i, j]), x, y,
+                                   gp = gpar(fontsize = 9))}},
+                   show_heatmap_legend = F)
+hm_corr
+
+```
+
+### Correlation of unknown metabolites
+
+Filtering the metabolites with positive and high Pearson's correlation coefficient (r >0.5).
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE}
+
+# Library to change character values
+library('stringr')
+# Correlation table for the heatmap with the best features
+best_feat <- data.frame(Feature_ID = ABTS_corr$X,
+                        ABTS = ABTS_corr$Correlation_coefficient,
+                        ABTS_p = ABTS_corr$Correlation_P,
+                        DPPH = DPPH_corr$Correlation_coefficient,
+                        DPPH_p = DPPH_corr$Correlation_P)
+# Filtering the feature with the correlation >= 0.7
+best_feat <- best_feat[abs(best_feat$ABTS) >= 0.7 |
+                         abs(best_feat$DPPH) >= 0.7, ]
+# Adding the metabolite name to the correlation table
+best_feat <- left_join(best_feat, feat_corr_table)
+# Extracting data of no identified metabolites
+best_feat <- best_feat[!complete.cases(best_feat$Metabolite),]
+# Replace the column name and ionization type "RTX5MS_EI" with unknown
+best_feat$Feature_ID <- sub('SH-RTX-5Sil-MS_EI_','Unknown-', best_feat$Feature_ID)
+best_feat$Feature_ID <- str_replace_all(best_feat$Feature_ID, '_', '.')
+
+```
+
+Create a matrix for the heatplot of Pearson's correlation.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# Correlation table for the heatmap
+hm_corr_table1 <- data.frame(Feature_ID = best_feat$Feature_ID,
+                             ABTS = best_feat$ABTS,
+                             DPPH = best_feat$DPPH )
+# Adding row name
+rownames(hm_corr_table1) <- hm_corr_table1$Feature_ID
+# Delete extra information
+hm_corr_table1 <- subset(hm_corr_table1, select = -c(Feature_ID))
+# Converting DataFrame to data matrix
+hm_corr_table1 <- data.matrix(hm_corr_table1, rownames.force = NA)
+# Adding column name
+colnames(hm_corr_table1) <- c("ABTS", "DPPH")
+
+```
+
+Create a matrix showing the statistical significance of the correlation result.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, results='hide'}
+
+# Correlation table for the heatmap
+hm_sign_table1 <- data.frame(Feature_ID = best_feat$Feature_ID,
+                             ABTS = best_feat$ABTS_p,
+                             DPPH = best_feat$DPPH_p)
+# Adding row name
+rownames(hm_sign_table1) <- hm_sign_table1$Feature_ID
+# Delete extra information
+hm_sign_table1 <- subset(hm_sign_table1, select = -c(Feature_ID))
+# Converting DataFrame to data matrix
+hm_sign_table1 <- data.matrix(hm_sign_table1, rownames.force = NA)
+# Adding column name
+colnames(hm_sign_table1) <- c("ABTS", "DPPH")
+
+```
+
+Plot the correlation heatplot.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, error=FALSE, fig.width = 5, fig.height = 6}
+
+# Color scale legend
+lgd1a <- Legend(col_fun = col_fun,
+                title = "Correlation coefficient",
+                direction = "horizontal" )
+# Packed legends
+pd = packLegend(lgd1a, direction = "horizontal")
+# Heatmap plot
+#png(file="Result/notame_Result/HS_GCMS/FigureA1.png", width = 5, height = 6, units = "in", res= 300)
+hm_corr1 <- Heatmap(hm_corr_table1, col = col_fun, cluster_rows = FALSE,
+                    cluster_columns = FALSE,
+                    border_gp = grid::gpar(col = "black", lty = 0.02),
+                    rect_gp = grid::gpar(col = "black", lwd = 0.75),
+                    top_annotation = ann_corr,
+                    cell_fun = function(j, i, x, y, w, h, fill) {
+                     if(hm_sign_table1[i, j] < 0.05) {
+                       grid.text(sprintf("%.1f", hm_corr_table1[i, j]), x, y,
+                                 gp = gpar(fontsize = 10, fontface = "bold"))
+                       } else if(hm_sign_table1[i, j] > 0.05) {
+                         grid.text(sprintf("%.1f", hm_corr_table1[i, j]), x, y,
+                                   gp = gpar(fontsize = 10))}},
+                    show_heatmap_legend = F)
+hm_corr1
+draw(pd, x = unit(7.5, "cm"), y = unit(0.2, "cm"), just = c("left", "bottom"))
+#dev.off()
+
+```
+
+Finish a record.
+
+```{r}
+
+finish_log()
+
+```

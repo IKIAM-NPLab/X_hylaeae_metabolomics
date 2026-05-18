@@ -1,0 +1,300 @@
+INFO [2026-05-14 18:43:16] Starting logging
+INFO [2026-05-14 18:43:45] Starting logging
+INFO [2026-05-14 18:45:36] Corner detected correctly at row 4, column H
+INFO [2026-05-14 18:45:36] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 18:45:36] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 18:45:36] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 18:45:36] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 18:45:36] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 18:45:36] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 18:45:36] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 18:45:36] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 18:45:36] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 18:45:36] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 18:45:36] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 18:45:36] 
+Checking sample information
+INFO [2026-05-14 18:50:03] Starting logging
+INFO [2026-05-14 18:51:05] Corner detected correctly at row 4, column H
+INFO [2026-05-14 18:51:05] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 18:51:05] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 18:51:05] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 18:51:05] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 18:51:05] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 18:51:05] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 18:51:05] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 18:51:05] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 18:51:05] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 18:51:05] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 18:51:05] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 18:51:05] 
+Checking sample information
+INFO [2026-05-14 18:52:50] Starting logging
+INFO [2026-05-14 18:54:22] Starting logging
+INFO [2026-05-14 18:54:28] Corner detected correctly at row 4, column H
+INFO [2026-05-14 18:54:28] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 18:54:28] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 18:54:28] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 18:54:28] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 18:54:28] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 18:54:28] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 18:54:28] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 18:54:28] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 18:54:28] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 18:54:28] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 18:54:28] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 18:54:29] 
+Checking sample information
+INFO [2026-05-14 18:57:27] Starting logging
+INFO [2026-05-14 18:57:33] Corner detected correctly at row 4, column H
+INFO [2026-05-14 18:57:33] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 18:57:33] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 18:57:33] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 18:57:33] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 18:57:33] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 18:57:33] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 18:57:33] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 18:57:33] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 18:57:33] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 18:57:34] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 18:57:34] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 18:57:34] 
+Checking sample information
+INFO [2026-05-14 19:09:31] Starting logging
+INFO [2026-05-14 19:09:37] Corner detected correctly at row 4, column H
+INFO [2026-05-14 19:09:37] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 19:09:37] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 19:09:37] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 19:09:37] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 19:09:37] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 19:09:37] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 19:09:37] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:09:37] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:09:37] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 19:09:37] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 19:09:37] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 19:09:38] 
+Checking sample information
+INFO [2026-05-14 19:23:40] Starting logging
+INFO [2026-05-14 19:23:45] Corner detected correctly at row 4, column H
+INFO [2026-05-14 19:23:45] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 19:23:45] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 19:23:45] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 19:23:45] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 19:23:45] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 19:23:45] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 19:23:45] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:23:45] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:23:45] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 19:23:46] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 19:23:46] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 19:23:46] 
+Checking sample information
+INFO [2026-05-14 19:23:46] Sample ID autogenerated from injection orders and prefix ID_
+INFO [2026-05-14 19:23:46] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 19:23:46] 
+Checking feature information
+INFO [2026-05-14 19:23:46] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 19:23:46] Checking that m/z and retention time values are reasonable
+INFO [2026-05-14 19:23:46] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:23:46] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:46:11] Starting logging
+INFO [2026-05-14 19:46:16] Corner detected correctly at row 4, column H
+INFO [2026-05-14 19:46:16] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 19:46:16] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 19:46:16] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 19:46:16] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 19:46:16] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 19:46:16] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 19:46:16] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:46:16] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:46:16] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 19:46:17] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 19:46:17] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 19:46:17] 
+Checking sample information
+INFO [2026-05-14 19:46:17] Sample ID autogenerated from injection orders and prefix ID_
+INFO [2026-05-14 19:46:17] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 19:46:18] 
+Checking feature information
+INFO [2026-05-14 19:46:18] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 19:46:18] Checking that m/z and retention time values are reasonable
+INFO [2026-05-14 19:46:18] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 19:46:18] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:09:20] 
+Checking feature information
+INFO [2026-05-14 20:09:20] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 20:09:20] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 20:09:21] Setting row and column names of exprs based on feature and pheno data
+INFO [2026-05-14 20:10:21] 
+Checking feature information
+INFO [2026-05-14 20:10:21] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 20:10:21] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 20:10:22] Setting row and column names of exprs based on feature and pheno data
+INFO [2026-05-14 20:16:37] Starting logging
+INFO [2026-05-14 20:16:44] Corner detected correctly at row 4, column H
+INFO [2026-05-14 20:16:44] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 20:16:44] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 20:16:44] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 20:16:44] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 20:16:44] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 20:16:44] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 20:16:44] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:16:44] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:16:44] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 20:16:44] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 20:16:44] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 20:16:44] 
+Checking sample information
+INFO [2026-05-14 20:16:44] QC column generated from rows containing 'QC'
+INFO [2026-05-14 20:16:44] Sample ID autogenerated from injection orders and prefix ID_
+INFO [2026-05-14 20:16:44] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 20:16:45] 
+Checking feature information
+INFO [2026-05-14 20:16:45] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 20:16:45] Checking that m/z and retention time values are reasonable
+INFO [2026-05-14 20:16:45] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:16:45] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:17:04] 
+Checking feature information
+INFO [2026-05-14 20:17:04] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 20:17:04] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 20:17:05] Setting row and column names of exprs based on feature and pheno data
+INFO [2026-05-14 20:22:41] 
+78% of features flagged for low detection rate
+INFO [2026-05-14 20:27:33] Starting logging
+INFO [2026-05-14 20:27:40] Corner detected correctly at row 4, column H
+INFO [2026-05-14 20:27:40] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 20:27:40] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 20:27:40] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 20:27:40] 
+Extracting feature information from rows 5 to 13909 and columns A to H
+INFO [2026-05-14 20:27:40] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 20:27:40] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 20:27:40] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:27:40] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:27:40] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 20:27:40] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 20:27:40] 
+Extracting feature abundances from rows 5 to 13909 and columns I to BM
+INFO [2026-05-14 20:27:40] 
+Checking sample information
+INFO [2026-05-14 20:27:40] QC column generated from rows containing 'QC'
+INFO [2026-05-14 20:27:40] Sample ID autogenerated from injection orders and prefix ID_
+INFO [2026-05-14 20:27:40] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 20:27:42] 
+Checking feature information
+INFO [2026-05-14 20:27:42] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 20:27:42] Checking that m/z and retention time values are reasonable
+INFO [2026-05-14 20:27:42] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:27:42] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:27:44] 
+Checking feature information
+INFO [2026-05-14 20:27:44] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 20:27:44] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 20:27:45] Setting row and column names of exprs based on feature and pheno data
+INFO [2026-05-14 20:28:39] 
+80% of features flagged for low detection rate
+INFO [2026-05-14 20:28:58] 
+Starting drift correction at 2026-05-14 20:28:58.118084
+INFO [2026-05-14 20:32:53] Drift correction performed at 2026-05-14 20:32:53.295535
+INFO [2026-05-14 20:33:10] Inspecting drift correction results 2026-05-14 20:33:10.503519
+INFO [2026-05-14 20:35:17] Drift correction results inspected at 2026-05-14 20:35:17.775799
+INFO [2026-05-14 20:35:17] 
+Drift correction results inspected, report:
+Drift_corrected: 33%,  Missing_QCS: 67%
+INFO [2026-05-14 20:35:18] 
+7% of features flagged for low quality
+INFO [2026-05-14 20:36:47] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 20:36:47] 
+Starting feature clustering at 2026-05-14 20:36:47.187913
+INFO [2026-05-14 20:36:47] Finding connections between features in Rtx-5_EI
+INFO [2026-05-14 20:39:16] Found 5563 connections in Rtx-5_EI
+INFO [2026-05-14 20:39:16] Found 5563 connections
+INFO [2026-05-14 20:39:17] Found 233 clusters of 2 or more features, clustering finished at 2026-05-14 20:39:17.346502
+INFO [2026-05-14 20:39:18] Clusters compressed, left with 1019 features
+INFO [2026-05-14 20:51:15] 
+12% of features flagged as contaminants
+INFO [2026-05-14 20:56:38] Starting PQN normalization
+INFO [2026-05-14 20:56:38] Using median of qc samples as reference spectrum
+INFO [2026-05-14 21:13:15] Starting logging
+INFO [2026-05-14 21:13:22] Corner detected correctly at row 4, column H
+INFO [2026-05-14 21:13:22] 
+Extracting sample information from rows 1 to 4 and columns I to BM
+INFO [2026-05-14 21:13:22] Replacing spaces in sample information column names with underscores (_)
+INFO [2026-05-14 21:13:22] Naming the last column of sample information "Datafile"
+INFO [2026-05-14 21:13:22] 
+Extracting feature information from rows 5 to 15999 and columns A to H
+INFO [2026-05-14 21:13:22] Creating Split column from Column, Ion_Mode
+INFO [2026-05-14 21:13:22] Feature_ID column not found, creating feature IDs
+INFO [2026-05-14 21:13:22] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 21:13:22] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 21:13:22] Creating feature IDs from Split, m/z and retention time
+INFO [2026-05-14 21:13:22] Replacing dots (.) in feature information column names with underscores (_)
+INFO [2026-05-14 21:13:22] 
+Extracting feature abundances from rows 5 to 15999 and columns I to BM
+INFO [2026-05-14 21:13:22] 
+Checking sample information
+INFO [2026-05-14 21:13:22] QC column generated from rows containing 'QC'
+INFO [2026-05-14 21:13:22] Sample ID autogenerated from injection orders and prefix ID_
+INFO [2026-05-14 21:13:22] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 21:13:23] 
+Checking feature information
+INFO [2026-05-14 21:13:23] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 21:13:23] Checking that m/z and retention time values are reasonable
+INFO [2026-05-14 21:13:23] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 21:13:23] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 21:13:26] 
+Checking feature information
+INFO [2026-05-14 21:13:26] Checking that feature IDs are unique and not stored as numbers
+INFO [2026-05-14 21:13:26] Checking that feature abundances only contain numeric values
+INFO [2026-05-14 21:13:26] Setting row and column names of exprs based on feature and pheno data
+INFO [2026-05-14 21:13:44] 
+78% of features flagged for low detection rate
+INFO [2026-05-14 21:13:50] 
+Starting drift correction at 2026-05-14 21:13:50.476078
+INFO [2026-05-14 21:19:03] Drift correction performed at 2026-05-14 21:19:03.777998
+INFO [2026-05-14 21:19:24] Inspecting drift correction results 2026-05-14 21:19:24.069158
+INFO [2026-05-14 21:22:21] Drift correction results inspected at 2026-05-14 21:22:21.89833
+INFO [2026-05-14 21:22:21] 
+Drift correction results inspected, report:
+Drift_corrected: 34%,  Missing_QCS: 66%
+INFO [2026-05-14 21:22:22] 
+7% of features flagged for low quality
+INFO [2026-05-14 21:27:00] Identified m/z column Mass and retention time column RT
+INFO [2026-05-14 21:27:00] 
+Starting feature clustering at 2026-05-14 21:27:00.444261
+INFO [2026-05-14 21:27:00] Finding connections between features in Rtx-5_EI
+INFO [2026-05-14 21:31:35] Found 25178 connections in Rtx-5_EI
+INFO [2026-05-14 21:31:35] Found 25178 connections
+INFO [2026-05-14 21:31:37] Found 279 clusters of 2 or more features, clustering finished at 2026-05-14 21:31:37.635116
+INFO [2026-05-14 21:31:38] Clusters compressed, left with 1153 features
+INFO [2026-05-14 21:31:51] 
+12% of features flagged as contaminants
+INFO [2026-05-14 21:32:08] Starting PQN normalization
+INFO [2026-05-14 21:32:08] Using median of qc samples as reference spectrum
