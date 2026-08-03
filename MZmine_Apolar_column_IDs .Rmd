@@ -184,6 +184,10 @@ mn_flag <- mn_error %>%
                              "Low score (<700)", "")) %>%
   ungroup()
 
+##########
+# Agregar aca el flag de silanos
+################
+
 ```
 
 **NOTE.** This step was used to quality control, the result of this was verify by manual identification.
@@ -259,9 +263,13 @@ mn_il <- mn_il %>%
   mutate(Feature_ID = as.numeric(Feature_ID)) %>%  # Change to numeric
   arrange(Feature_ID)
 
+##########
+# Casos silanos, si es alto pero hay hits validos que no son silanos usar aquel
+################
+
 ```
 
-En some case same name of metabolite has been asigned for multiple feature. In the case with same metabolite name was assigned for multiple feature, the best match factor was priorized for features between 0 to 10 RI error (the in hose library was priorized a them the filter was apply). For features with same metabolite name and RI error between 10 and 100, the metabolie name was assigned for feature with the low RI error, in the case with the same RI error the best match factor was priorized. For features with the same metabolite name and RI error > 100 or that have NA, the metabolite name was assigned to feature with major match factor. Feature that not meet the condition descrive above was tag as "Repeated (RI error <10)", "Repeated (RI error 10-100)", and "Repeated (RI error >100/NA)", accordingly.
+En some case same name of metabolite has been asigned for multiple feature. In the case with same metabolite name was assigned for multiple feature, the best match factor was priorized for features between 0 to 10 RI error (the in hose library was priorized a them the filter was apply). For features with same metabolite name and RI error between 10 and 100, the metabolie name was assigned for feature with the low RI error, in the case with the same RI error the best match factor was priorized. For features with the same metabolite name and RI error > 100 or that have NA, the metabolite name was assigned to feature with major match factor. Feature that not meet the condition describe above was tag as "Repeated (RI error <10)", "Repeated (RI error 10-100)", and "Repeated (RI error >100/NA)", accordingly.
 
 ```{r }
 
@@ -486,6 +494,11 @@ Flag features identified as siloxane compounds by compund formula.
 
 ```{r }
 
+
+##########
+# Eliminar tras la implementacion anterior
+################
+
 mn_ions_si <- mn_ions_fg %>%
   mutate(Match_flag = case_when(
     !is.na(Formula) & str_detect(Formula, "Si\\d*") ~
@@ -547,9 +560,9 @@ mn_ions_cf <- mn_ions_si %>%
   left_join(mn_class, by = "InChIKey")
 # Exporting the feature list with metabolites identified al IL 1, 2, and 3
 mn_ions_cf %>%
-  select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
-         Formula, MatchFactor, matched_ions, Lit_RI, Exp_RI, RI_Error, Library,
-         DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
+  select(Feature_ID, Segment, Alignment_ID, IL, RT, Hit, Name, Synon1, Synon2,
+         Synon3, Formula, MatchFactor, matched_ions, Lit_RI, Exp_RI, RI_Error,
+         Library, DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
          nist_mz, nist_intensity, exp_mz_ns, exp_int_ns) %>%
   mutate(nist_mz = sapply(nist_mz, paste, collapse = ", "),
          nist_intensity = sapply(nist_intensity, paste, collapse = ", "),

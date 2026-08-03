@@ -528,9 +528,9 @@ mshub_ions_cf <- mshub_ions_si %>%
   left_join(mshub_class, by = "InChIKey")
 # Exporting the feature list with metabolites identified al IL 1, 2, and 3
 mshub_ions_cf %>%
-  select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
-         Formula, MatchFactor, matched_ions, Lit_RI, Exp_RI, RI_Error, Library,
-         DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
+  select(Feature_ID, Segment, Alignment_ID, IL, RT, Hit, Name, Synon1, Synon2,
+         Synon3, Formula, MatchFactor, matched_ions, Lit_RI, Exp_RI, RI_Error,
+         Library, DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
          nist_mz, nist_intensity, exp_mz_ns, exp_int_ns) %>%
   mutate(nist_mz = sapply(nist_mz, paste, collapse = ", "),
          nist_intensity = sapply(nist_intensity, paste, collapse = ", "),
