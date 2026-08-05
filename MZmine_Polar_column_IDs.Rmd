@@ -32,8 +32,8 @@ library(readxl)
 library(writexl)
 library(purrr)
 library(classyfireR)
-
-plan(future::multisession, workers = 10)
+library(future)
+#plan(multisession, workers = 12)
 
 ```
 
@@ -122,7 +122,7 @@ Loading the feature table with experimental RI.
 
 # Loading the feature list table with experimental RI
 file_mnwxri <- "../X_hylaeae_metabolomics/Result/MZmine_GCMS_polar_feat_list_with_RI.xlsx"
-mn_wx_ri <- read_excel(file_mnwxri, sheet = 1)
+mn_wx_ri <- read_excel(file_mnwxri, sheet = 1, guess_max = 5000)
 # Extracting only the experimental IR
 mn_wx_ri <- data.frame(Feature_ID = mn_wx_ri$Feature_ID, Segment = mn_wx_ri$Segment,
                        Alignment_ID = mn_wx_ri$Alignment_ID, RT = mn_wx_ri$RT,
@@ -181,6 +181,10 @@ mn_wx_flag <- mn_wx_error %>%
   mutate(Match_flag = ifelse(MatchFactor < 700,
                              "Low score (<700)", "")) %>%
   ungroup()
+
+##########
+# Agregar aca el flag de silanos
+################
 
 ```
 
@@ -256,6 +260,10 @@ mn_wx_il <- mn_wx_clean %>%
 mn_wx_il <- mn_wx_il %>%
   mutate(Feature_ID = as.numeric(Feature_ID)) %>%  # Change to numeric
   arrange(Feature_ID)
+
+##########
+# Casos silanos, si es alto pero hay hits validos que no son silanos usar aquel
+################
 
 ```
 
@@ -481,6 +489,12 @@ Flag features identified as siloxane compounds by compund formula.
 
 ```{r }
 
+
+##########
+# Eliminar tras la implementacion anterior
+################
+
+
 mn_wx_ions_si <- mn_wx_ions_fg %>%
   mutate(Match_flag = case_when(
     !is.na(Formula) & str_detect(Formula, "Si\\d*") ~
@@ -542,9 +556,9 @@ mn_wx_ions_cf <- mn_wx_ions_si %>%
   left_join(mn_wx_class, by = "InChIKey")
 # Exporting the feature list with metabolites identified al IL 1, 2, and 3
 mn_wx_ions_cf %>%
-  select(Feature_ID, Segment, Alignment_ID, IL, RT, Name, Synon1, Synon2, Synon3,
-         Formula, MatchFactor, matched_ions, RI_StdPolar, Exp_RI, RI_Error, Library,
-         DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
+  select(Feature_ID, Segment, Alignment_ID, IL, RT, Hit, Name, Synon1, Synon2,
+         Synon3, Formula, MatchFactor, matched_ions, RI_StdPolar, Exp_RI, RI_Error,
+         Library, DB_ID, InChIKey, Superclass, Class, Subclass, Match_flag, RI_tag,
          nist_mz, nist_intensity, exp_mz_ns, exp_int_ns) %>%
   mutate(nist_mz = sapply(nist_mz, paste, collapse = ", "),
          nist_intensity = sapply(nist_intensity, paste, collapse = ", "),
